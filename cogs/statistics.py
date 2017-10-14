@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 
 import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MultipleLocator
 
@@ -12,9 +13,7 @@ import asyncio
 
 from concurrent.futures import ThreadPoolExecutor
 import functools
-
-
-matplotlib.use('Agg')
+import random
 
 
 class Plots:
@@ -22,18 +21,7 @@ class Plots:
 
     def __init__(self, bot):
         self.bot = bot
-        self.bot.loop.create_task(self.grab_pings())
         self.threadex = ThreadPoolExecutor(max_workers=2)
-
-    async def grab_pings(self):
-        await self.bot.wait_until_ready()
-
-        while not self.bot.is_closed():
-            if len(self.bot._pings) >= 60:
-                self.bot._pings.pop(0)
-
-            self.bot._pings.append(self.bot.latency * 1000)
-            await asyncio.sleep(60)
 
     def pager(self, entries, chunk: int):
         for x in range(0, len(entries), chunk):
@@ -45,7 +33,15 @@ class Plots:
 
         return highest, lowest
 
+    def datetime_range(self, start, end, delta):
+        current = start
+        while current < end:
+            yield current
+            current += delta
+
     def get_times(self):
+        # todo this is really bad so fix soon pls thanks kk weeeew
+
         fmt = '%H%M'
         current = datetime.datetime.utcnow()
         times = []
@@ -79,7 +75,7 @@ class Plots:
 
         # Base Data
         if data is None:
-            numbers = self.bot._pings
+            numbers = list(self.bot._pings)
         else:
             numbers = data
 
@@ -93,7 +89,7 @@ class Plots:
 
         t = np.sin(np.array(numbers) * np.pi*2 / 180.)
         xnp = np.linspace(-np.pi, np.pi, 60)
-        tmean = [np.mean(t)] * 60
+        # tmean = [np.mean(t)] * 60
 
         # Spacing/Figure/Subs
         plt.style.use('ggplot')
@@ -108,7 +104,7 @@ class Plots:
         times, times2, times3, current = self.get_times()
 
         # Axis's/Labels
-        plt.title(f'Latency over Time(WebSocket) | {current} UTC')
+        plt.title(f'Latency over Time (WebSocket) | {current} UTC')
         ax.set_xlabel(' ')
         ax.set_ylabel('Network Stability')
         ax2.set_xlabel(' ')
@@ -273,8 +269,78 @@ class Plots:
         current = datetime.datetime.utcnow()
         save = current.strftime("%Y-%m-%d%H%M")
 
-        plt.savefig(f'/pings/{save}', bbox_inches='tight')  # !!!VPS!!!
-        self.bot._latest_ping[save] = f'/pings/{save}.png'  # !!!VPS!!!
+        plt.savefig(f'/root/mystbot/pings/{save}', bbox_inches='tight')  # !!!VPS!!!
+        self.bot._latest_ping[save] = f'/root/mystbot/pings/{save}.png'  # !!!VPS!!!
+
+        plt.clf()
+        plt.close()
+        return save
+
+    def ram_plotter(self, data: (list, tuple)=None):
+        current = datetime.datetime.utcnow()
+
+        # Time Labels
+        dts = [dt.strftime('%H%M') for dt in self.datetime_range(current - datetime.timedelta(minutes=30),
+                                                                 current, datetime.timedelta(minutes=1))]
+
+        test = random.sample(range(0, 120), 120)
+        chunks = tuple(self.pager(test, 2))
+
+        mind = min(test)
+        maxd = max(test)
+        mean = [np.mean(test)] * 120
+        avg = list(itertools.chain.from_iterable(itertools.repeat(np.average(x), 4) for x in chunks))
+        highest, lowest = self.hilo(test, 1)
+
+        fig = plt.figure(figsize=(15, 7.5))
+        ax = fig.add_subplot(1, 1, 1, axisbg='whitesmoke', alpha=0.3)  # Main
+        plt.style.use('ggplot')
+        plt.title(f'Usage over Time (RAM) | {current} UTC')
+        ax.set_xlabel('Time (HHMM)')
+        ax.set_ylabel('Usage (MiB)')
+
+        ax.set_xlim([0, 120])
+        ax.set_xticks(np.linspace(0, 120, 30))
+        ax.set_ylim([mind, maxd + 15])
+        ax.set_yticks(np.linspace(mind, maxd + 15, 30))
+        ax.set_xticklabels(dts)
+        ax.grid(which='both')
+        plt.grid(True, alpha=0.25)
+
+        # Plots
+        ax.plot(list(range(0, 120)), test)
+        ax.plot(list(range(0, 120)), test, '-', c='darkslategrey',
+                linewidth=0.5,
+                label='Usage')
+        ax.fill_between(list(range(0, 240)), avg, facecolors='cyan', alpha=0.6)
+        ax.fill_between(list(range(0, 120)), test, facecolors='teal', alpha=1)
+        ax.plot(list(range(0, 120)), mean, '--', c='limegreen', label='Mean')
+        ax.plot(range(0, 120), test, ' ', c='indianred',
+                 linewidth=1.0,
+                 markevery=highest,
+                 marker='^',
+                 markersize=12)
+        ax.text(highest[0], max(test) - 10, f'{round(max(test))} MiB', fontsize=12)
+        ax.plot(range(0, 120), test, ' ', c='lime',
+                 linewidth=1.0,
+                 markevery=lowest,
+                 marker='v',
+                 markersize=12)
+        ax.plot(list(range(0, 120)), test, 'darkorchid',
+                 alpha=.5,
+                 linewidth=.75,
+                 drawstyle='steps-pre',
+                 label='Steps')
+        ax.plot(range(0, 240), avg, c='cyan',
+                 linewidth=1.5,
+                 markevery=1,
+                 label='Average',
+                alpha=0.5)
+
+        ax.legend(loc='best', bbox_transform=plt.gcf().transFigure)
+        save = current.strftime("%Y-%m-%d%H%M")
+        plt.savefig(f'/root/mystbot/rams/{save}', bbox_inches='tight')  # !!!VPS!!!
+        self.bot._latest_ram[save] = f'/root/mystbot/rams/{save}.png'  # !!!VPS!!!
 
         plt.clf()
         plt.close()
@@ -298,7 +364,27 @@ class Plots:
 
         getfile = functools.partial(self.ping_plotter)
         pfile = await self.bot.loop.run_in_executor(self.threadex, getfile)
-        await ctx.send(file=discord.File(f'/pings/{pfile}.png'))  # !!!VPS!!!
+        await ctx.send(file=discord.File(f'pings/{pfile}.png'))  # !!!VPS!!!
+
+    @commands.command(name='ram')
+    async def _ram(self, ctx):
+        """Ram usage. Shown as a pretty graph."""
+
+        current = datetime.datetime.utcnow().strftime('%Y-%m-%d%H%M')
+
+        if len(self.bot._ram) < 60:
+            return await ctx.send(f'Ram Usage: **`{self.bot._ram[0]}`**')
+
+        await ctx.channel.trigger_typing()
+        try:
+            pfile = self.bot._latest_ram[current]
+            return await ctx.send(file=discord.File(pfile))
+        except:
+            pass
+
+        getfile = functools.partial(self.ram_plotter)
+        pfile = await self.bot.loop.run_in_executor(self.threadex, getfile)
+        await ctx.send(file=discord.File(f'/root/mystbot/rams/{pfile}.png'))  # !!!VPS!!!
 
 
 def setup(bot):

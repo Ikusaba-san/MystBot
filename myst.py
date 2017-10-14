@@ -5,6 +5,8 @@ from motor import motor_asyncio
 import asyncio
 import aiohttp
 import sys, traceback
+from collections import deque
+import psutil
 import logging
 from configparser import ConfigParser
 import contextlib
@@ -24,7 +26,7 @@ loop = asyncio.get_event_loop()
 dbc = motor_asyncio.AsyncIOMotorClient(minPoolSize=5)
 
 token = ConfigParser()
-token.read('mystconfig.ini')  # !!!VPS!!!
+token.read('/root/mysbot/mystconfig.ini')  # !!!VPS!!!
 
 
 async def get_prefix(b, msg):
@@ -57,24 +59,32 @@ init_ext = ('cogs.admin',
             'cogs.statistics')
 
 
-class Botto(commands.Bot):
+class Botto(commands.AutoShardedBot):
 
     def __init__(self):
         self.blocks = {}
         self.prefix_cache = {}
         self._help_pages = None
-        self._pings = []
         self._latest_ping = {}
+        self._latest_ram = {}
 
         self.dbc = dbc
         self.session = None
         self.uptime = datetime.datetime.utcnow()
         self.appinfo = None
+        self.process = psutil.Process()
 
         self._cache_ready = asyncio.Event()
 
+        self._ram = deque(maxlen=60)  # 30 Minutes | Polled 30s [30 * 60 / 60]
+        self._pings = deque(maxlen=60)  # 60 Minutes | Polled 60s [60 * 60 / 60]
+        self._cpu = deque(maxlen=120)  # 30 Minutes | Polled 15s [15 * 120 / 60]
+        self._stasks = {}
+        self._starters = (self._task_pings, self._task_ram)
+
         super().__init__(command_prefix=get_prefix, description=None)
 
+    # Called in on_ready()
     async def _load_cache(self):
         self._cache_ready.clear()
         self.session = aiohttp.ClientSession(loop=loop)
@@ -87,7 +97,35 @@ class Botto(commands.Bot):
         async for mem in dbc['owner']['blocks'].find({}):
             self.blocks[mem['_id']] = mem['name']
 
-        self._cache_ready.set()
+        await self._setup_tasks()
+
+        return self._cache_ready.set()
+
+    async def _setup_tasks(self):
+
+        for exc in self._starters:
+            task = self.loop.create_task(exc())
+            self._stasks[exc.__name__] = task
+
+    async def _task_pings(self):
+        await self.wait_until_ready()
+
+        while not self.is_closed():
+            if self.latency <= 0:
+                await asyncio.sleep(1)
+                continue
+            self._pings.append(self.latency * 1000)
+            await asyncio.sleep(60)
+
+    async def _task_ram(self):
+        await self.wait_until_ready()
+
+        while not self.is_closed():
+            self._ram.append(self.process.memory_full_info().uss / 1024**2)
+            await asyncio.sleep(30)
+
+    async def _task_cpu(self):
+        pass
 
     async def fetch(self, url: str, headers: dict = None, timeout: float = None,
                     return_type: str = None, **kwargs):
@@ -205,6 +243,6 @@ async def shutdown():
 with setup_logging():
 
     try:
-        loop.run_until_complete(bot.start(token.get('TOKENALPHA', '_id'), bot=True, reconnect=True))  # !!!VPS!!!
+        loop.run_until_complete(bot.start(token.get('TOKEN', '_id'), bot=True, reconnect=True))  # !!!VPS!!!
     except KeyboardInterrupt:
         loop.run_until_complete(shutdown())
