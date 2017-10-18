@@ -23,9 +23,9 @@ from discord.ext import commands
 
 import asyncio
 import async_timeout
+import subprocess
 from concurrent.futures import ThreadPoolExecutor
 import functools
-import subprocess
 
 import json
 import datetime
@@ -38,19 +38,18 @@ import uuid
 import youtube_dl
 
 from cogs.utils.paginators import SimplePaginator
-from cogs.utils.handler import PlayerGarbageError
 
 log = logging.getLogger('myst')
 
 
 class SongsProcessor:
-    def __init__(self, ctx, player, search: str):
-        self.ctx = ctx
-        self.player = player
-        self.search = search
-        self.mproc = None
-        self.failed = 0
-        self.opts = {
+
+    def outtmpl_seed(self):
+        ytid = str(uuid.uuid4()).replace('-', '')
+        return str(int(ytid, 16))
+
+    async def initiate_request(self, ctx, player, search: str):
+        opts = {
             'format': 'bestaudio/best',
             'outtmpl': f'{ctx.guild.id}/{self.outtmpl_seed()}%(extractor)s_%(id)s.%(ext)s',
             'restrictfilenames': True,
@@ -63,119 +62,48 @@ class SongsProcessor:
             'default_search': 'auto',
             'source_address': '0.0.0.0',
             'playlistend': 50,
-            'progress_hooks': [self.ytdl_hook]
         }
-        self.ytdl = youtube_dl.YoutubeDL(self.opts)
-        self.ytdl_ef = youtube_dl.YoutubeDL(self.opts)
 
-        self.threadex = ThreadPoolExecutor(max_workers=4)
-        self.bg_ext = self.ctx.bot.loop.create_task(self.extractor())
+        ytdl = youtube_dl.YoutubeDL(opts)
+        ytdl.params['extract_flat'] = True
+        ef_info = ytdl.extract_info(download=False, url=search)
+        ytdl.params['extract_flat'] = False
 
-    def outtmpl_seed(self):
-        ytid = str(uuid.uuid4()).replace('-', '')
-        return str(int(ytid, 16))
-
-    def get_duration(self, url):
-
-        cmd = f'ffprobe -v error -show_format -of json {url}'
-        process = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        output, error = process.communicate()
-        data = json.loads(output)
-        duration = data['format']['duration']
-
-        return math.ceil(float(duration))
-
-    def ytdl_hook(self, x):
-        if x['status'] == 'error':
-            log.info(f'SongProcessor:: YTDL: Error while downloading song with: ({self.search} - [{self.ctx.guild.id}]')
-
-    async def extractor(self):
-        await self.ctx.bot.wait_until_ready()
-
-        self.ytdl_ef.params['extract_flat'] = True
-        dlf = functools.partial(self.ytdl_ef.extract_info, download=False, url=self.search)
-        info = await self.ctx.bot.loop.run_in_executor(self.threadex, dlf)
-
-        if 'entries' in info:
-            return await self.downloader(length=len(info['entries']))
+        if 'entries' in ef_info:
+            length = len(ef_info['entries'])
         else:
-            return await self.downloader(length=1)
-
-    async def downloader(self, length: int):
-
-        await self.ctx.channel.trigger_typing()
-
-        if length > 1:
-            self.mproc = \
-                await self.ctx.send(f'```ini\n[Processing your songs. Playlists may take some time | 0/{length}]\n```')
+            length = 1
 
         for v in range(1, length + 1):
 
-            if self.ctx.guild.voice_client is None:
-                return self.bg_ext.cancel()
+            if ctx.guild.voice_client is None:
+                return
 
             try:
-                self.ytdl.params.update({'playlistend': v, 'playliststart': v})
-                dlt = functools.partial(self.ytdl.extract_info, download=True, url=self.search)
-                info = await self.ctx.bot.loop.run_in_executor(self.threadex, dlt)
+                ytdl.params.update({'playlistend': v, 'playliststart': v})
+                tdl = (ytdl, ctx, search)
+                await player.download_queue.put(tdl)
             except Exception as e:
                 if length <= 1:
-                    return await self.ctx.send(f'**There was an error downloading your song.**\n```css\n[{e}]\n```')
+                    return await ctx.send(f'**There was an error downloading your song.**\n```css\n[{e}]\n```')
                 else:
-                    self.failed += 1
                     continue
-
-            if 'entries' in info:
-                info = info['entries'][0]
-
-            duration = info.get('duration') or self.get_duration(info.get('url'))
-            song_info = {'title': info.get('title'),
-                         'weburl': info.get('webpage_url'),
-                         'duration': duration,
-                         'views': info.get('view_count'),
-                         'thumb': info.get('thumbnail'),
-                         'requester': self.ctx.author,
-                         'upload_date': info.get('upload_date', '\uFEFF')}
-            file = self.ytdl.prepare_filename(info)
-
-            while self.player.shuffling:
-                await asyncio.sleep(1)
-
-            await self.player.queue.put({'source': file, 'info': song_info, 'channel': self.ctx.channel})
-
-            try:
-                await self.mproc.edit(
-                    content=f'```ini\n[Processing your songs. Playlists may take some time | {v}/{length}]\n```')
-            except:
-                pass
-
-        if self.failed == 0 and length > 1:
-            await self.ctx.send(f'```ini\n[Added your songs to the Queue]\n```', delete_after=30)
-        elif self.failed != 0 and length > 1:
-            await self.ctx.send(f'```ini\n[Added your songs to the Queue]\n```\n```css\n'
-                                f'[{self.failed} songs failed to download.]\n```', delete_after=30)
-        else:
-            await self.ctx.send(f'```ini\n[Added: {song_info["title"]} to the playlist.]\n```', delete_after=30)
-
-        if self.mproc:
-            try:
-                await self.mproc.delete()
-            except:
-                pass
 
 
 class Player:
-    def __init__(self, bot, guild, channel, mcls):
-        self.bot = bot
-        self.guild = guild
-        self.channel = channel
-        self.mcls = mcls
 
-        self.player_task = self.bot.loop.create_task(self.player_loop())
-        self.queue = asyncio.Queue()
+    def __init__(self, ctx):
+        self.ctx = ctx
+        self._task_downloader = ctx.bot.loop.create_task(self.downloader())
+        self._task_playerloop = ctx.bot.loop.create_task(self.player_loop())
+
+        self.download_queue = asyncio.Queue()
+        self.song_queue = asyncio.Queue()
+
         self._next = asyncio.Event()
-        self.held_entry = []
 
+        self.held_entry = []
+        self.channel = None
         self._volume = 0.5
         self.playing = None
         self.playing_info = None
@@ -202,33 +130,72 @@ class Player:
     def volume(self):
         return self._volume
 
-    async def player_loop(self):
-        await self.bot.wait_until_ready()
+    def get_duration(self, url):
 
-        while not self.bot.is_closed():
+        cmd = f'ffprobe -v error -show_format -of json {url}'
+        process = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        output, error = process.communicate()
+        data = json.loads(output)
+        duration = data['format']['duration']
+
+        return math.ceil(float(duration))
+
+    async def downloader(self):
+        await self.ctx.bot.wait_until_ready()
+
+        with ThreadPoolExecutor(max_workers=4) as threadex:
+            while not self.ctx.bot.is_closed():
+                tdl = await self.download_queue.get()
+                fut = threadex.submit(tdl[0].extract_info, download=True, url=tdl[2])
+                await asyncio.sleep(0)
+                fut.add_done_callback(functools.partial(self.dl_completed, tdl[1], tdl[0]))
+
+    def dl_completed(self, ctx, ytdl, future):
+        info = future.result()
+
+        if 'entries' in info:
+            info = info['entries'][0]
+
+        duration = info.get('duration') or self.get_duration(info.get('url'))
+        song_info = {'title': info.get('title'),
+                     'weburl': info.get('webpage_url'),
+                     'duration': duration,
+                     'views': info.get('view_count'),
+                     'thumb': info.get('thumbnail'),
+                     'requester': ctx.author,
+                     'upload_date': info.get('upload_date', '\uFEFF')}
+        file = ytdl.prepare_filename(info)
+
+        self.song_queue.put_nowait({'source': file, 'info': song_info, 'channel': ctx.channel})
+
+    async def player_loop(self):
+        await self.ctx.bot.wait_until_ready()
+
+        while not self.ctx.bot.is_closed():
             self._next.clear()
 
             try:
                 with async_timeout.timeout(300):
-                    entry = await self.queue.get()
+                    entry = await self.song_queue.get()
                     del self.held_entry[:]
                     self.held_entry.append(entry)
             except asyncio.TimeoutError:
                 if self.downloading:
                     continue
                 await self.channel.send('I have been inactive for **5** minutes. Goodbye.', delete_after=30)
-                return await self.mcls.cleanup(self.guild, self.player_task, self)
+                return await self.ctx.bot.music_cleanup(self.ctx, self)
 
             self.playing_info = entry['info']
             self.requester = entry['info']['requester']
             self.channel = entry['channel']
+            source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(entry['source']), volume=self._volume)
 
-            self.guild.voice_client.play(discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(entry['source']),
-                                                                      volume=self._volume),
-                                         after=lambda s: self.bot.loop.call_soon_threadsafe(self._next.set()))
+            self.ctx.guild.voice_client.play(source,
+                                             after=lambda s: self.ctx.bot.loop.call_soon_threadsafe(self._next.set()))
 
             await self.now_playing(entry['info'], entry['channel'])
             await self._next.wait()
+            source.cleanup()
 
             self.playing_info = None
             self.requester = None
@@ -236,6 +203,7 @@ class Player:
             self.pauses.clear()
             self.resumes.clear()
             self.shuffles.clear()
+            del entry
 
     async def now_playing(self, info, channel):
 
@@ -249,15 +217,15 @@ class Player:
         embed.add_field(name='Requested by', value=info['requester'].mention)
         embed.add_field(name='Video URL', value=f"[Click Here!]({info['weburl']})")
         embed.add_field(name='Duration', value=str(datetime.timedelta(seconds=int(info['duration']))))
-        embed.add_field(name='Queue Length', value=f'{self.queue.qsize()}')
-        if self.queue.qsize() > 0:
-            upnext = self.queue._queue[0]['info']
+        embed.add_field(name='Queue Length', value=f'{self.song_queue.qsize()}')
+        if self.song_queue.qsize() > 0:
+            upnext = self.song_queue._queue[0]['info']
             embed.add_field(name='Up Next', value=upnext['title'], inline=False)
         embed.set_footer(text=f'🎶 | Views: {humanize.intcomma(info["views"])} |'
                               f' {info["upload_date"] if not None else ""}')
 
         async for message in channel.history(limit=1):
-            if self.playing is None or message.id != self.playing.id and message.author.id != self.bot.user.id:
+            if self.playing is None or message.id != self.playing.id and message.author.id != self.ctx.bot.user.id:
 
                 try:
                     await self.playing.delete()
@@ -282,9 +250,13 @@ class Player:
                         await channel.send(
                             f'**Error in Player Garbage Collection:: Please terminate and restart the player.**'
                             f'```css\n[{type(e)}] - [{e}]\n```')
+                        return await self.ctx.bot.music_cleanup(self.ctx, self)
 
-                        return await self.mcls.cleanup(self.guild, self.player_task, self, failed=(type(e), e))
-                self.controller = self.bot.loop.create_task(self.react_controller())
+                self.controller = self.ctx.bot.loop.create_task(self.react_controller())
+                try:
+                    self.ctx.bot._player_tasks[self.ctx.guild.id].append(self.controller)
+                except:
+                    self.ctx.bot._player_tasks[self.ctx.guild.id] = [self.controller]
             else:
                 try:
                     await self.playing.edit(content=None, embed=embed)
@@ -292,7 +264,7 @@ class Player:
                     pass
 
     async def react_controller(self):
-        vc = self.guild.voice_client
+        vc = self.ctx.guild.voice_client
 
         def check(r, u):
 
@@ -302,7 +274,7 @@ class Player:
             if str(r) not in self.controls.keys():
                 return False
 
-            if u.id == self.bot.user.id or r.message.id != self.playing.id:
+            if u.id == self.ctx.bot.user.id or r.message.id != self.playing.id:
                 return False
 
             if u not in vc.channel.members:
@@ -316,7 +288,7 @@ class Player:
                 self.controller.cancel()
                 return
 
-            react, user = await self.bot.wait_for('reaction_add', check=check)
+            react, user = await self.ctx.bot.wait_for('reaction_add', check=check)
             control = self.controls.get(str(react))
 
             try:
@@ -325,11 +297,11 @@ class Player:
                 pass
 
             try:
-                cmd = self.bot.get_command(control)
-                ctx = await self.bot.get_context(react.message)
+                cmd = self.ctx.bot.get_command(control)
+                ctx = await self.ctx.bot.get_context(react.message)
                 ctx.author = user
             except Exception as e:
-                log.warning(f'PLAYER:: React Controller: {e} - [{self.guild.id}]')
+                log.warning(f'PLAYER:: React Controller: {e} - [{self.ctx.guild.id}]')
             else:
                 try:
                     if cmd.is_on_cooldown(ctx):
@@ -337,9 +309,9 @@ class Player:
                     if not await self.invoke_react(cmd, ctx):
                         continue
                     else:
-                        self.bot.loop.create_task(ctx.invoke(cmd))
+                        self.ctx.bot.loop.create_task(ctx.invoke(cmd))
                 except Exception as e:
-                    ctx.command = self.bot.get_command('reactcontrol')
+                    ctx.command = self.ctx.bot.get_command('reactcontrol')
                     await cmd.dispatch_error(ctx=ctx, error=e)
                     continue
 
@@ -366,48 +338,14 @@ class Music:
 
     def __init__(self, bot):
         self.bot = bot
-        self.players = {}
-        self.threadex = ThreadPoolExecutor(max_workers=4)
-
-    async def cleanup(self, guild, task, player, failed: tuple = None):
-
-        vc = guild.voice_client
-
-        try:
-            await player.playing.delete()
-        except:
-            pass
-
-        try:
-            vc._connected.clear()
-            try:
-                if vc.ws:
-                    await vc.ws.close()
-
-                await vc.terminate_handshake(remove=True)
-            finally:
-                if vc.socket:
-                    vc.socket.close()
-        except:
-            pass
-
-        try:
-            task.cancel()
-        except Exception as e:
-            log.error(f'PLAYERCLEANUP:: CancelError: - [{type(e): {e}}]')
-
-        del self.players[guild.id]
-
-        if failed:
-            raise PlayerGarbageError(failed[0], failed[1], guild)
 
     def get_player(self, ctx):
 
-        player = self.players.get(ctx.guild.id)
+        player = self.bot._players.get(ctx.guild.id)
 
         if player is None:
-            player = Player(self.bot, ctx.guild, ctx.channel, self)
-            self.players[ctx.guild.id] = player
+            player = Player(ctx)
+            self.bot._players[ctx.guild.id] = player
         return player
 
     @commands.command(name='reactcontrol', hidden=True)
@@ -440,14 +378,13 @@ class Music:
             vc = ctx.guild.voice_client
 
         player = self.get_player(ctx)
-        process = SongsProcessor
 
         try:
             await ctx.message.delete()
         except:
             pass
 
-        process(ctx=ctx, player=player, search=search)
+        self.bot.loop.create_task(SongsProcessor().initiate_request(ctx, player, search))
 
     @commands.command(name='join', aliases=['summon', 'move', 'connect'])
     @commands.cooldown(2, 60, commands.BucketType.user)
@@ -633,7 +570,15 @@ class Music:
         except:
             pass
 
-        await self.cleanup(ctx.guild, player.player_task, player)
+        while not player.song_queue.empty():
+            await player.song_queue.get()
+
+        vc.stop()
+
+        try:
+            await self.bot.music_cleanup(ctx, player)
+        except Exception as e:
+            await ctx.send(e)
         await ctx.send(f'Player has been terminated by {ctx.author.mention}. **Goodbye.**', delete_after=30)
 
     @stop_player.error
@@ -687,14 +632,13 @@ class Music:
 
         shuf = []
 
-        while not player.queue.empty():
-            shuf.append(await player.queue.get())
+        while not player.song_queue.empty():
+            shuf.append(await player.song_queue.get())
 
         random.shuffle(shuf)
 
         for x in shuf:
-            await player.queue.put(x)
-
+            await player.song_queue.put(x)
         await ctx.invoke(self.now_playing)
 
     @commands.command(name='vol_up', hidden=True)
@@ -818,10 +762,10 @@ class Music:
         player.shuffling = True
 
         while not player.queue.empty():
-            player.held_entry.append(await player.queue.get())
+            player.held_entry.append(await player.song_queue.get())
 
         for x in player.held_entry:
-            await player.queue.put(x)
+            await player.song_queue.put(x)
 
         player.shuffling = False
         del player.held_entry[:]
@@ -840,10 +784,10 @@ class Music:
         if vc is None:
             return await ctx.send('**I am not currently playing anything.**', delete_after=10)
 
-        elif player.queue.qsize() <= 0:
+        elif player.song_queue.qsize() <= 0:
             return await ctx.send(f'```css\n[No other songs in the Queue.]\n```', delete_after=10)
 
-        entries = [x["info"]["title"] for x in player.queue._queue]
+        entries = [x["info"]["title"] for x in player.song_queue._queue]
         page = SimplePaginator(title='Playlist',
                                ctx=ctx,
                                bot=self.bot,

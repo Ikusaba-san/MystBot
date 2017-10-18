@@ -9,11 +9,9 @@ from matplotlib.ticker import MultipleLocator
 import numpy as np
 import itertools
 import datetime
-import asyncio
 
 from concurrent.futures import ThreadPoolExecutor
 import functools
-import random
 
 
 class Plots:
@@ -269,8 +267,8 @@ class Plots:
         current = datetime.datetime.utcnow()
         save = current.strftime("%Y-%m-%d%H%M")
 
-        plt.savefig(f'/root/mystbot/pings/{save}', bbox_inches='tight')  # !!!VPS!!!
-        self.bot._latest_ping[save] = f'/root/mystbot/pings/{save}.png'  # !!!VPS!!!
+        plt.savefig(f'/home/myst/mystbot/pings/{save}', bbox_inches='tight')  # !!!VPS!!!
+        self.bot._latest_ping[save] = f'/home/myst/mystbot/pings/{save}.png'  # !!!VPS!!!
 
         plt.clf()
         plt.close()
@@ -283,7 +281,7 @@ class Plots:
         dts = [dt.strftime('%H%M') for dt in self.datetime_range(current - datetime.timedelta(minutes=30),
                                                                  current, datetime.timedelta(minutes=1))]
 
-        test = random.sample(range(0, 120), 120)
+        test = list(self.bot._ram)
         chunks = tuple(self.pager(test, 2))
 
         mind = min(test)
@@ -299,10 +297,12 @@ class Plots:
         ax.set_xlabel('Time (HHMM)')
         ax.set_ylabel('Usage (MiB)')
 
+        minylim = mind - 15 if mind - 15 > 0 else 0
+
         ax.set_xlim([0, 120])
         ax.set_xticks(np.linspace(0, 120, 30))
-        ax.set_ylim([mind, maxd + 15])
-        ax.set_yticks(np.linspace(mind, maxd + 15, 30))
+        ax.set_ylim([0, 120])
+        ax.set_yticks(np.linspace(mind, maxd + 15, 12))
         ax.set_xticklabels(dts)
         ax.grid(which='both')
         plt.grid(True, alpha=0.25)
@@ -339,8 +339,8 @@ class Plots:
 
         ax.legend(loc='best', bbox_transform=plt.gcf().transFigure)
         save = current.strftime("%Y-%m-%d%H%M")
-        plt.savefig(f'/root/mystbot/rams/{save}', bbox_inches='tight')  # !!!VPS!!!
-        self.bot._latest_ram[save] = f'/root/mystbot/rams/{save}.png'  # !!!VPS!!!
+        plt.savefig(f'/home/myst/mystbot/rams/{save}', bbox_inches='tight')  # !!!VPS!!!
+        self.bot._latest_ram[save] = f'/home/myst/mystbot/rams/{save}.png'  # !!!VPS!!!
 
         plt.clf()
         plt.close()
@@ -364,7 +364,7 @@ class Plots:
 
         getfile = functools.partial(self.ping_plotter)
         pfile = await self.bot.loop.run_in_executor(self.threadex, getfile)
-        await ctx.send(file=discord.File(f'pings/{pfile}.png'))  # !!!VPS!!!
+        await ctx.send(file=discord.File(f'/home/myst/mystbot/pings/{pfile}.png'))  # !!!VPS!!!
 
     @commands.command(name='ram')
     async def _ram(self, ctx):
@@ -384,7 +384,10 @@ class Plots:
 
         getfile = functools.partial(self.ram_plotter)
         pfile = await self.bot.loop.run_in_executor(self.threadex, getfile)
-        await ctx.send(file=discord.File(f'/root/mystbot/rams/{pfile}.png'))  # !!!VPS!!!
+        await ctx.send(file=discord.File(f'/home/myst/mystbot/rams/{pfile}.png'))  # !!!VPS!!!
+
+    async def sick(self, ctx, name: str=None):
+        pass
 
 
 def setup(bot):

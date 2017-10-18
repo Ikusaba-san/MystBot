@@ -113,7 +113,6 @@ class Moderation:
         await ctx.send('I have purged all my assigned prefixes. You can now use the defaults.')
 
     @commands.command(name='source', aliases=['sauce'])
-    @commands.is_owner()
     async def get_source(self, ctx, *, command: str):
         """Retrieve the source code of a command or cog."""
 

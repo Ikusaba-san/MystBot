@@ -27,7 +27,7 @@ class ErrorHandler:
     def __init__(self, bot):
         self.bot = bot
         self.wh_info = ConfigParser()
-        self.wh_info.read('mystconfig.ini')  # !!!VPS!!!
+        self.wh_info.read('/home/myst/mystbot/mystconfig.ini')  # !!!VPS!!!
 
     @property
     def webhook(self):
@@ -61,6 +61,8 @@ class ErrorHandler:
             except:
                 pass
 
+        exc = ''.join(traceback.format_exception(type(error), error, error.__traceback__, chain=False))
+
         e = discord.Embed(title='Command Error', colour=0xF31431)
         e.add_field(name='Name', value=ctx.command.qualified_name)
         e.add_field(name='Author', value=f'{ctx.author} (ID: {ctx.author.id})')
@@ -71,10 +73,12 @@ class ErrorHandler:
 
         e.add_field(name='Location', value=fmt, inline=False)
 
-        exc = ''.join(traceback.format_exception(type(error), error, error.__traceback__, chain=False))
-        if len(exc) > 2000:
-            print(exc)
-        e.description = f'```py\n{exc}\n```'
+        if len(exc) > 2024:
+            gist = await self.bot.create_gist(f'Command Error: {ctx.command.qualified_name}', [('error.py', exc)])
+            e.description = gist
+        else:
+            e.description = f'```py\n{exc}\n```'
+
         e.timestamp = datetime.datetime.utcnow()
         await self.webhook.send(embed=e)
 
@@ -83,7 +87,6 @@ class BotChecks:
 
     def __init__(self, bot):
         self.bot = bot
-
         self.bot.add_check(self.check_botblocks)
 
     async def check_botblocks(self, ctx):

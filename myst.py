@@ -26,7 +26,7 @@ loop = asyncio.get_event_loop()
 dbc = motor_asyncio.AsyncIOMotorClient(minPoolSize=5)
 
 token = ConfigParser()
-token.read('/root/mysbot/mystconfig.ini')  # !!!VPS!!!
+token.read('/home/myst/mystbot/mystconfig.ini')  # !!!VPS!!!
 
 
 async def get_prefix(b, msg):
@@ -76,13 +76,46 @@ class Botto(commands.AutoShardedBot):
 
         self._cache_ready = asyncio.Event()
 
-        self._ram = deque(maxlen=60)  # 30 Minutes | Polled 30s [30 * 60 / 60]
+        self._ram = deque(maxlen=120)  # 30 Minutes | Polled 15s [30 * 120 / 60]
         self._pings = deque(maxlen=60)  # 60 Minutes | Polled 60s [60 * 60 / 60]
         self._cpu = deque(maxlen=120)  # 30 Minutes | Polled 15s [15 * 120 / 60]
         self._stasks = {}
         self._starters = (self._task_pings, self._task_ram)
+        self._players = {}
+        self._player_tasks = {}
 
         super().__init__(command_prefix=get_prefix, description=None)
+
+    async def music_cleanup(self, ctx, player):
+        vc = ctx.guild.voice_client
+
+        try:
+            await player.playing.delete()
+        except:
+            pass
+
+        try:
+            vc._connected.clear()
+            try:
+                if vc.ws:
+                    await vc.ws.close()
+
+                await vc.terminate_handshake(remove=True)
+            finally:
+                if vc.socket:
+                    vc.socket.close()
+        except:
+            pass
+
+        for task in bot._player_tasks[ctx.guild.id]:
+            try:
+                task.cancel()
+            except Exception as e:
+                await ctx.send(f'**```css\n[Error cancelling player tasks. |\n{e}]\n```**')
+
+        del bot._players[ctx.guild.id]
+        del bot._player_tasks[ctx.guild.id]
+        del player
 
     # Called in on_ready()
     async def _load_cache(self):
@@ -122,7 +155,7 @@ class Botto(commands.AutoShardedBot):
 
         while not self.is_closed():
             self._ram.append(self.process.memory_full_info().uss / 1024**2)
-            await asyncio.sleep(30)
+            await asyncio.sleep(15)
 
     async def _task_cpu(self):
         pass

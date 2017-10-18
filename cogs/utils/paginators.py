@@ -1,6 +1,8 @@
 import discord
 from discord.ext import commands
+
 import asyncio
+import inspect
 
 
 class SimplePaginator:
@@ -146,7 +148,6 @@ class SimplePaginator:
         if len(self.pages) <= 1:
             await message.add_reaction('⏹')
         else:
-            message = await self.ctx.send(embed=self.pages[0])
             for r in self.controls:
                 try:
                     await message.add_reaction(r)
@@ -166,8 +167,10 @@ class HelpPaginator:
         self.bot = bot
         self.ctx = ctx
         self.colours = {'Music': 0xd02525, 'Moderation': 0xff8003, 'Colour': 0xdeadbf,
-                        'Admin': 0xffffff, 'Eval': 0xffffff, 'KothHandler': 0xffffff, 'Plots': 0xffffff}
-        self.ignored = ('Eval', 'Admin', 'KothHandler', 'ErrorHandler',)
+                        'Admin': 0xffffff, 'Eval': 0xffffff, 'KothHandler': 0xffffff, 'Plots': 0xffffff,
+                        'Observations': 0x551a8b, 'Dofus': 0x4DCDFF}
+        self.images = {'Dofus': 'https://i.imgur.com/4D5t5Cq.png'}
+        self.ignored = ('Eval', 'Admin', 'KothHandler', 'ErrorHandler', 'BotChecks')
 
         self.current = 0
         self.controls = {'⏮': 'reset',
@@ -179,6 +182,7 @@ class HelpPaginator:
         self.pages = []
 
     async def help_generator(self):
+        pcount = 1
 
         about = discord.Embed(title='Mysterial - Help',
                               description='For additional help and resources:\n\n'
@@ -192,11 +196,15 @@ class HelpPaginator:
         for x in coms:
             if x[0] in self.ignored:
                 continue
-            cog = self.bot.get_cog(x[0])
 
-            embed = discord.Embed(title=x[0], description=f'```ini\n{cog.__doc__}\n```', colour=self.colours[x[0]])
-            embed.set_thumbnail(url='http://pngimages.net/sites/default/files/help-png-image-34233.png')
+            cog = self.bot.get_cog(x[0])
+            embed = discord.Embed(title=x[0], description=f'```ini\n{inspect.cleandoc(cog.__doc__)}\n```',
+                                  colour=self.colours[x[0]])
+            image = self.images.get(x[0], 'http://pngimages.net/sites/default/files/help-png-image-34233.png')
+            embed.set_thumbnail(url=image)
+
             for c in x[1]:
+                short = inspect.cleandoc(c.short_doc) if c.short_doc else 'Nothing'
                 if c.hidden:
                     continue
                 try:
@@ -205,11 +213,9 @@ class HelpPaginator:
                     continue
                 if isinstance(c, commands.Group):
                     grouped = '  \n'.join(com.name for com in c.commands)
-                    embed.add_field(name=f'{c.name} - [Group]', value=f'{c.short_doc if c.short_doc else "Nothing"}'
-                                                                      f'\n\n`{grouped}`')
+                    embed.add_field(name=f'{c.name} - [Group]', value=f'{short}\n\n`{grouped}`')
                 else:
-                    embed.add_field(name=c.name, value=c.short_doc if c.short_doc else 'Nothing', inline=False)
-
+                    embed.add_field(name=c.name, value=short, inline=False)
             self.pages.append(embed)
 
         message = await self.ctx.send(embed=self.pages[0])
