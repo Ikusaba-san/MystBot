@@ -156,11 +156,10 @@ class Player:
                 fut.add_done_callback(functools.partial(self.dl_callback, tdl[1], tdl[0], tdl[3]))
 
     def dl_callback(self, ctx, ytdl, future, length):
-        self.ctx.bot.loop.create_task(self.dl_completed(ctx, ytdl, future, length))
-
-    async def dl_completed(self, ctx, ytdl, future, length):
-
         info = future.result()
+        self.ctx.bot.loop.create_task(self.dl_completed(ctx, ytdl, info, length))
+
+    async def dl_completed(self, ctx, ytdl, info, length):
 
         if 'entries' in info:
             info = info['entries'][0]
