@@ -155,7 +155,7 @@ class Player:
                 await asyncio.sleep(0)
                 fut.add_done_callback(functools.partial(self.dl_callback, tdl[1], tdl[0], tdl[3]))
 
-    def dl_callback(self, ctx, ytdl, future, length):
+    def dl_callback(self, ctx, ytdl, length, future):
         info = future.result()
         self.ctx.bot.loop.create_task(self.dl_completed(ctx, ytdl, info, length))
 
