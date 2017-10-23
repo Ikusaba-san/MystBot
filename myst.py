@@ -127,13 +127,6 @@ class Botto(commands.AutoShardedBot):
 
         print(4)
 
-        for task in bot._player_tasks[ctx.guild.id]:
-            try:
-                task.cancel()
-            except Exception as e:
-                print('4e')
-                return await ctx.send(f'**```css\n[Error cancelling player tasks. |\n{e}]\n```**')
-
         print(5)
 
         try:
