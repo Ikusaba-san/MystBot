@@ -154,24 +154,18 @@ class Botto(commands.AutoShardedBot):
         async for mem in dbc['owner']['blocks'].find({}):
             self.blocks[mem['_id']] = mem['name']
 
+        if await self.dbc.find({}).count() <= 0:
+            await self.dbc['owner']['stats'].insert({'_id': 'command_counter', 'count': 0})
+            await self.dbc['owner']['stats'].insert({'_id': 'message_counter', 'count': 0})
+            await self.dbc['owner']['stats'].insert({'_id': 'songs_counter', 'count': 0})
+
         com_counter = await self.dbc['owner']['stats'].find_one({'_id': 'command_counter'})
         msg_counter = await self.dbc['owner']['stats'].find_one({'_id': 'message_counter'})
         sng_counter = await self.dbc['owner']['stats'].find_one({'_id': 'songs_counter'})
 
-        if com_counter:
-            self._counter_commands = com_counter['count']
-        else:
-            self._counter_commands = 0
-
-        if msg_counter:
-            self._counter_messages = msg_counter['count']
-        else:
-            self._counter_messages = 0
-
-        if sng_counter:
-            self._counter_songs = sng_counter['count']
-        else:
-            self._counter_songs = 0
+        self._counter_commands = com_counter['count']
+        self._counter_messages = msg_counter['count']
+        self._counter_songs = sng_counter['count']
 
         await self._setup_tasks()
 
