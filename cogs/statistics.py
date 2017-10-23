@@ -373,7 +373,7 @@ class Plots:
         current = datetime.datetime.utcnow().strftime('%Y-%m-%d%H%M')
 
         if len(self.bot._ram) < 60:
-            return await ctx.send(f'Ram Usage: **`{self.bot._ram[0]}`**')
+            return await ctx.send(f'Ram Usage: **`{self.bot._ram[-1]}`**')
 
         await ctx.channel.trigger_typing()
         try:

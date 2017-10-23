@@ -1,0 +1,10 @@
+
+.idea/
+OLD/
+cogs/__pycache__/
+cogs/utils/__pycache__/
+*.pyc
+myst.log
+mystbot.sh
+mystconfig.ini
+

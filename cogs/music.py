@@ -64,30 +64,31 @@ class SongsProcessor:
             'playlistend': 50,
         }
 
-        ytdl = youtube_dl.YoutubeDL(opts)
-        ytdl.params['extract_flat'] = True
-        ef_info = ytdl.extract_info(download=False, url=search)
-        ytdl.params['extract_flat'] = False
+        async with ctx.typing():
+            ytdl = youtube_dl.YoutubeDL(opts)
+            ytdl.params['extract_flat'] = True
+            ef_info = ytdl.extract_info(download=False, url=search)
+            ytdl.params['extract_flat'] = False
 
-        if 'entries' in ef_info:
-            length = len(ef_info['entries'])
-        else:
-            length = 1
+            if 'entries' in ef_info:
+                length = len(ef_info['entries'])
+            else:
+                length = 1
 
-        for v in range(1, length + 1):
+            for v in range(1, length + 1):
 
-            if ctx.guild.voice_client is None:
-                return
+                if ctx.guild.voice_client is None:
+                    return
 
-            try:
-                ytdl.params.update({'playlistend': v, 'playliststart': v})
-                tdl = (ytdl, ctx, search)
-                await player.download_queue.put(tdl)
-            except Exception as e:
-                if length <= 1:
-                    return await ctx.send(f'**There was an error downloading your song.**\n```css\n[{e}]\n```')
-                else:
-                    continue
+                try:
+                    ytdl.params.update({'playlistend': v, 'playliststart': v})
+                    tdl = (ytdl, ctx, search)
+                    await player.download_queue.put(tdl)
+                except Exception as e:
+                    if length <= 1:
+                        return await ctx.send(f'**There was an error downloading your song.**\n```css\n[{e}]\n```')
+                    else:
+                        continue
 
 
 class Player:
@@ -382,6 +383,8 @@ class Music:
         except:
             pass
 
+        self.bot._counter_songs += 1
+
         self.bot.loop.create_task(SongsProcessor().initiate_request(ctx, player, search))
 
     @commands.command(name='join', aliases=['summon', 'move', 'connect'])
@@ -577,7 +580,7 @@ class Music:
         try:
             await self.bot.music_cleanup(ctx, player)
         except Exception as e:
-            await ctx.send(e)
+            return await ctx.send(e)
         await ctx.send(f'Player has been terminated by {ctx.author.mention}. **Goodbye.**', delete_after=30)
 
     @stop_player.error

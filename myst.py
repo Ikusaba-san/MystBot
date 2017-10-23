@@ -56,7 +56,8 @@ init_ext = ('cogs.admin',
             'cogs.music',
             'cogs.apis',
             'cogs.koth',
-            'cogs.statistics')
+            'cogs.statistics',
+            'cogs.meta')
 
 
 class Botto(commands.AutoShardedBot):
@@ -84,6 +85,10 @@ class Botto(commands.AutoShardedBot):
         self._players = {}
         self._player_tasks = {}
 
+        self._counter_commands = None
+        self._counter_messages = None
+        self._counter_songs = None
+
         super().__init__(command_prefix=get_prefix, description=None)
 
     async def music_cleanup(self, ctx, player):
@@ -107,7 +112,10 @@ class Botto(commands.AutoShardedBot):
         except:
             pass
 
-        player.threadex.shutdown(wait=False)
+        try:
+            player.threadex.shutdown(wait=False)
+        except Exception as e:
+            print(e)
 
         for task in bot._player_tasks[ctx.guild.id]:
             try:
@@ -117,6 +125,7 @@ class Botto(commands.AutoShardedBot):
 
         del bot._players[ctx.guild.id]
         del bot._player_tasks[ctx.guild.id]
+
         try:
             player._task_playerloop.cancel()
             player._task_downloader.cancel()
@@ -130,14 +139,22 @@ class Botto(commands.AutoShardedBot):
         self._cache_ready.clear()
         self.session = aiohttp.ClientSession(loop=loop)
 
+        # Prefixes
         for guild in self.guilds:
             if await self.dbc['prefix'][str(guild.id)].find({}).count() <= 0:
                 await self.dbc['prefix'][str(guild.id)].insert_many([{'_id': 'myst '}, {'_id': 'myst pls '}])
             self.prefix_cache[guild.id] = [p['_id'] async for p in self.dbc['prefix'][str(guild.id)].find({})]
 
+        # Blocks
         async for mem in dbc['owner']['blocks'].find({}):
             self.blocks[mem['_id']] = mem['name']
 
+        com_counter = await self.dbc['owner']['stats'].find_one({'_id': 'command_counter'})
+        msg_counter = await self.dbc['owner']['stats'].find_one({'_id': 'message_counter'})
+        sng_counter = await self.dbc['owner']['stats'].find_one({'_id': 'songs_counter'})
+        self._counter_commands = com_counter['count'] if com_counter else 0
+        self._counter_messages = msg_counter if msg_counter else 0
+        self._counter_songs = sng_counter if sng_counter else 0
         await self._setup_tasks()
 
         return self._cache_ready.set()
