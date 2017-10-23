@@ -33,7 +33,6 @@ class Stats:
 
     async def on_message(self, message):
         self.bot._counter_messages += 1
-        await self.bot.process_commands(message)
 
     def get_bot_uptime(self, *, brief=False):
         now = datetime.datetime.utcnow()
