@@ -74,6 +74,7 @@ class SongsProcessor:
                 length = len(ef_info['entries'])
             else:
                 length = 1
+            msg = await ctx.send('```ini\n[Adding songs to Queue]\n```')
 
             for v in range(1, length + 1):
 
@@ -82,13 +83,14 @@ class SongsProcessor:
 
                 try:
                     ytdl.params.update({'playlistend': v, 'playliststart': v})
-                    tdl = (ytdl, ctx, search)
+                    tdl = (ytdl, ctx, search, length)
                     await player.download_queue.put(tdl)
                 except Exception as e:
                     if length <= 1:
                         return await ctx.send(f'**There was an error downloading your song.**\n```css\n[{e}]\n```')
                     else:
                         continue
+            await msg.delete()
 
 
 class Player:
@@ -151,9 +153,13 @@ class Player:
                 tdl = await self.download_queue.get()
                 fut = self.threadex.submit(tdl[0].extract_info, download=True, url=tdl[2])
                 await asyncio.sleep(0)
-                fut.add_done_callback(functools.partial(self.dl_completed, tdl[1], tdl[0]))
+                fut.add_done_callback(functools.partial(self.dl_callback, tdl[1], tdl[0], tdl[3]))
 
-    def dl_completed(self, ctx, ytdl, future):
+    def dl_callback(self, ctx, ytdl, future, length):
+        self.ctx.bot.loop.create_task(self.dl_completed(ctx, ytdl, future, length))
+
+    async def dl_completed(self, ctx, ytdl, future, length):
+
         info = future.result()
 
         if 'entries' in info:
@@ -169,7 +175,10 @@ class Player:
                      'upload_date': info.get('upload_date', '\uFEFF')}
         file = ytdl.prepare_filename(info)
 
-        self.song_queue.put_nowait({'source': file, 'info': song_info, 'channel': ctx.channel})
+        if length == 1:
+            await ctx.send(f'```ini\n[Added {info.get("title")} to the queue.]\n```')
+
+        await self.song_queue.put({'source': file, 'info': song_info, 'channel': ctx.channel})
 
     async def player_loop(self):
         await self.ctx.bot.wait_until_ready()

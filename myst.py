@@ -93,15 +93,12 @@ class Botto(commands.AutoShardedBot):
 
     async def music_cleanup(self, ctx, player):
         vc = ctx.guild.voice_client
-        print(1)
 
         try:
             await player.playing.delete()
         except Exception as e:
             print(e)
             print('1e')
-
-        print(2)
 
         try:
             vc._connected.clear()
@@ -117,27 +114,17 @@ class Botto(commands.AutoShardedBot):
             print(e)
             print('2e')
 
-        print(3)
-
         try:
             player.threadex.shutdown(wait=False)
         except Exception as e:
             print(e)
             print('3e')
 
-        print(4)
-
-        print(5)
-
         try:
             del bot._players[ctx.guild.id]
-            del bot._player_tasks[ctx.guild.id]
         except Exception as e:
             print(e)
             print('5e')
-
-        print(6)
-
         try:
             player._task_playerloop.cancel()
             player._task_downloader.cancel()
@@ -145,19 +132,11 @@ class Botto(commands.AutoShardedBot):
             print(e)
             print('6e')
 
-        print(7)
-
         try:
             del player
         except Exception as e:
             print(e)
             print('7e')
-
-        print(8)
-
-        print(bot._players)
-        print(bot._player_tasks)
-        print(player)
         return
 
     # Called in on_ready()
