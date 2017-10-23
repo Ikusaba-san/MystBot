@@ -157,9 +157,22 @@ class Botto(commands.AutoShardedBot):
         com_counter = await self.dbc['owner']['stats'].find_one({'_id': 'command_counter'})
         msg_counter = await self.dbc['owner']['stats'].find_one({'_id': 'message_counter'})
         sng_counter = await self.dbc['owner']['stats'].find_one({'_id': 'songs_counter'})
-        self._counter_commands = com_counter['count'] if com_counter else 0
-        self._counter_messages = msg_counter if msg_counter else 0
-        self._counter_songs = sng_counter if sng_counter else 0
+
+        if com_counter:
+            self._counter_commands = com_counter['count']
+        else:
+            self._counter_commands = 0
+
+        if msg_counter:
+            self._counter_messages = msg_counter['count']
+        else:
+            self._counter_messages = 0
+
+        if sng_counter:
+            self._counter_songs = sng_counter['count']
+        else:
+            self._counter_songs = 0
+
         await self._setup_tasks()
 
         return self._cache_ready.set()
