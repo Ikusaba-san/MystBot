@@ -206,7 +206,6 @@ class Player:
             self.pauses.clear()
             self.resumes.clear()
             self.shuffles.clear()
-            del entry
 
     async def now_playing(self, info, channel):
 
@@ -577,7 +576,7 @@ class Music:
         vc.stop()
         await asyncio.sleep(1)
 
-        await self.bot.music_cleanup(ctx, player)
+        self.bot.loop.create_task(self.bot.music_cleanup(ctx, player))
         await ctx.send(f'Player has been terminated by {ctx.author.mention}. **Goodbye.**', delete_after=30)
 
     @stop_player.error

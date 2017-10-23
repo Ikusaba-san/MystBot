@@ -133,7 +133,11 @@ class Botto(commands.AutoShardedBot):
             player._task_downloader.cancel()
         except Exception as e:
             print(e)
-        del player
+
+        try:
+            del player
+        except Exception as e:
+            print(e)
         return
 
     # Called in on_ready()
