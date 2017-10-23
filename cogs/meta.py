@@ -16,15 +16,16 @@ class Stats:
         self.bot.loop.create_task(self.stats_updater())
 
     async def stats_updater(self):
+        await self.bot.wait_until_ready()
 
         while not self.bot.is_closed():
-            await self.bot.dbc['owner']['stats'].update({'_id': 'command_counter'},
+            await self.bot.dbc['owner']['stats'].update_one({'_id': 'command_counter'},
                                                         {'%set': {'count': self.bot._counter_commands}},
                                 upsert=True)
-            await self.bot.dbc['owner']['stats'].update({'_id': 'message_counter'},
+            await self.bot.dbc['owner']['stats'].update_one({'_id': 'message_counter'},
                                                             {'%set': {'count': self.bot._counter_messages}},
                                 upsert=True)
-            await self.bot.dbc['owner']['stats'].update({'_id': 'songs_counter'},
+            await self.bot.dbc['owner']['stats'].update_one({'_id': 'songs_counter'},
                                                             {'%set': {'count': self.bot._counter_songs}},
                                 upsert=True)
 
@@ -35,6 +36,7 @@ class Stats:
 
     async def on_message(self, message):
         self.bot._counter_messages += 1
+        await self.bot.process_commands(message)
 
     def get_bot_uptime(self, *, brief=False):
         now = datetime.datetime.utcnow()
