@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 
 import datetime
+import asyncio
 import psutil
 import os
 import numpy as np
@@ -15,15 +16,19 @@ class Stats:
         self.bot.loop.create_task(self.stats_updater())
 
     async def stats_updater(self):
-        db = self.bot.dbc['owner']['stats']
 
         while not self.bot.is_closed():
-            await db.update_one({'_id': 'command_counter'}, {'%set': {'count': self.bot._counter_commands}},
+            await self.bot.dbc['owner']['stats'].update({'_id': 'command_counter'},
+                                                        {'%set': {'count': self.bot._counter_commands}},
                                 upsert=True)
-            await db.update_one({'_id': 'message_counter'}, {'%set': {'count': self.bot._counter_messages}},
+            await self.bot.dbc['owner']['stats'].update({'_id': 'message_counter'},
+                                                            {'%set': {'count': self.bot._counter_messages}},
                                 upsert=True)
-            await db.update_one({'_id': 'songs_counter'}, {'%set': {'count': self.bot._counter_songs}},
+            await self.bot.dbc['owner']['stats'].update({'_id': 'songs_counter'},
+                                                            {'%set': {'count': self.bot._counter_songs}},
                                 upsert=True)
+
+            await asyncio.sleep(60)
 
     async def on_command_completion(self, ctx):
         self.bot._counter_commands += 1
