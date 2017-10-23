@@ -609,7 +609,7 @@ class Music:
         elif player.downloading:
             return await ctx.send('**Please wait for your songs to finish downloading**', delete_after=15)
 
-        elif player.queue.qsize() <= 2:
+        elif player.song_queue.qsize() <= 2:
             return await ctx.send('**Please add more songs to the Queue before shuffling.**', delete_after=15)
 
         elif ctx.author.guild_permissions.manage_guild:
@@ -727,8 +727,8 @@ class Music:
             vc.stop()
             return await ctx.send(f'**{ctx.author.mention} has skipped the song.**', delete_after=10)
 
-        req_skips = 1 if vc.channel.members == 1 \
-            else 2 if 2 <= vc.channel.members <= 4 \
+        req_skips = 1 if len(vc.channel.members) == 1 \
+            else 2 if 2 <= len(vc.channel.members) <= 4 \
             else int(round(vc.channel.members / 5)) + 3
 
         need = req_skips - len(player.skips)
@@ -768,7 +768,7 @@ class Music:
 
         player.shuffling = True
 
-        while not player.queue.empty():
+        while not player.song_queue.empty():
             player.held_entry.append(await player.song_queue.get())
 
         for x in player.held_entry:
