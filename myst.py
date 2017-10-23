@@ -155,9 +155,9 @@ class Botto(commands.AutoShardedBot):
             self.blocks[mem['_id']] = mem['name']
 
         if await self.dbc['owner']['stats'].find({}).count() <= 0:
-            await self.dbc['owner']['stats'].insert_many({'_id': 'command_counter', 'count': 0},
-                                                         {'_id': 'message_counter', 'count': 0},
-                                                         {'_id': 'songs_counter', 'count': 0})
+            await self.dbc['owner']['stats'].insert_one({'_id': 'command_counter', 'count': 0})
+            await self.dbc['owner']['stats'].insert_one({'_id': 'message_counter', 'count': 0})
+            await self.dbc['owner']['stats'].insert_one({'_id': 'songs_counter', 'count': 0})
 
         com_counter = await self.dbc['owner']['stats'].find_one({'_id': 'command_counter'})
         msg_counter = await self.dbc['owner']['stats'].find_one({'_id': 'message_counter'})
