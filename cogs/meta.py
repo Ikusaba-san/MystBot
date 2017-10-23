@@ -17,9 +17,13 @@ class Stats:
     async def stats_updater(self):
         db = self.bot.dbc['owner']['stats']
 
-        await db.update_one({'_id': 'command_counter'}, {'%inc': {'count': 1}}, upsert=True)
-        await db.update_one({'_id': 'message_counter'}, {'%inc': {'count': 1}}, upsert=True)
-        await db.update_one({'_id': 'songs_counter'}, {'%inc': {'count': 1}}, upsert=True)
+        while not self.bot.is_closed():
+            await db.update_one({'_id': 'command_counter'}, {'%set': {'count': self.bot._counter_commands}},
+                                upsert=True)
+            await db.update_one({'_id': 'message_counter'}, {'%set': {'count': self.bot._counter_messages}},
+                                upsert=True)
+            await db.update_one({'_id': 'songs_counter'}, {'%set': {'count': self.bot._counter_songs}},
+                                upsert=True)
 
     async def on_command_completion(self, ctx):
         self.bot._counter_commands += 1
