@@ -160,6 +160,7 @@ class Player:
         self.ctx.bot.loop.create_task(self.dl_completed(ctx, ytdl, info, length))
 
     async def dl_completed(self, ctx, ytdl, info, length):
+        print('In task...')
 
         if 'entries' in info:
             info = info['entries'][0]
