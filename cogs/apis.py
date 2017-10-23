@@ -1,6 +1,8 @@
 import discord
 from discord.ext import commands
 
+import asyncio
+
 import configparser
 import datetime
 import random
@@ -207,6 +209,7 @@ class Observations:
         key = configparser.ConfigParser()
         key.read('/home/myst/mystbot/mystconfig.ini')  # !!!VPS!!!
         self._nasa_key = key.get("NASA", "_key")
+        self._weather_key = key.get("WEATHER", "_key")
 
     @commands.group(invoke_without_command=True)
     async def nasa(self, ctx):
@@ -315,7 +318,7 @@ class Observations:
 
         url = f'https://api.nasa.gov/planetary/apod?api_key={self._nasa_key}'
         try:
-            res, data = self.bot.fetch(url=url, timeout=15, return_type='json')
+            res, data = await self.bot.fetch(url=url, timeout=15, return_type='json')
         except:
             return await ctx.send('There was an error processing your request')
 
@@ -356,6 +359,38 @@ class Observations:
                         value=img_base.format(img['date'].split(' ')[0].replace('-', '/'), img['image']))
         embed.timestamp = datetime.datetime.utcnow()
         embed.set_footer(text='Generated on ')
+
+        await ctx.send(content=None, embed=embed)
+
+    @commands.command(name='weather', aliases=['w', 'conditions'])
+    async def get_weather(self, ctx, *, location: str = None):
+        """Check the weather in a location"""
+        if location is None:
+            return await ctx.send('Please provide a location to get Weather Information for.')
+
+        base = f'http://api.apixu.com/v1/current.json?key={self._weather_key}&q={location}'
+
+        try:
+            resp, data = await self.bot.fetch(base, return_type='json')
+        except asyncio.TimeoutError:
+            return await ctx.send('Our Weather API seems to be experiencing difficulties. Please try again later.')
+
+        location = data['location']
+        locmsg = f'{location["name"]}, {location["region"]} {location["country"].upper()}'
+        current = data['current']
+
+        colour = 0xFFA71A if current['is_day'] != 0 else 0x483078
+        embed = discord.Embed(title=f'Weather for {locmsg}',
+                              description=f'*{current["condition"]["text"]}*',
+                              colour=colour)
+        embed.set_thumbnail(url=f'http:{current["condition"]["icon"]}')
+        embed.add_field(name='Temperature', value=f'{current["temp_c"]}°C | {current["temp_f"]}°F')
+        embed.add_field(name='Feels Like', value=f'{current["feelslike_c"]}°C | {current["feelslike_f"]}°F')
+        embed.add_field(name='Precipitation', value=f'{current["precip_mm"]} mm')
+        embed.add_field(name='Humidity', value=f'{current["humidity"]}%')
+        embed.add_field(name='Windspeed', value=f'{current["wind_kph"]} kph | {current["wind_mph"]} mph')
+        embed.add_field(name='Wind Direction', value=current['wind_dir'])
+        embed.timestamp = datetime.datetime.utcnow()
 
         await ctx.send(content=None, embed=embed)
 

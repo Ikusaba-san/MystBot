@@ -107,6 +107,8 @@ class Botto(commands.AutoShardedBot):
         except:
             pass
 
+        player.threadex.shutdown(wait=False)
+
         for task in bot._player_tasks[ctx.guild.id]:
             try:
                 task.cancel()
@@ -115,7 +117,13 @@ class Botto(commands.AutoShardedBot):
 
         del bot._players[ctx.guild.id]
         del bot._player_tasks[ctx.guild.id]
+        try:
+            player._task_playerloop.cancel()
+            player._task_downloader.cancel()
+        except Exception as e:
+            print(e)
         del player
+        return
 
     # Called in on_ready()
     async def _load_cache(self):

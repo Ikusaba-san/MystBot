@@ -169,7 +169,9 @@ class HelpPaginator:
         self.colours = {'Music': 0xd02525, 'Moderation': 0xff8003, 'Colour': 0xdeadbf,
                         'Admin': 0xffffff, 'Eval': 0xffffff, 'KothHandler': 0xffffff, 'Plots': 0xffffff,
                         'Observations': 0x551a8b, 'Dofus': 0x4DCDFF}
-        self.images = {'Dofus': 'https://i.imgur.com/4D5t5Cq.png'}
+        self.images = {'Dofus': 'https://i.imgur.com/4D5t5Cq.png', 'Music': 'https://i.imgur.com/MuwbN0k.png',
+                       'Moderation': 'https://i.imgur.com/QyCtECs.png', 'Plots': 'https://i.imgur.com/Y8Q8siB.png',
+                       'Colour': 'https://www.zebrapen.com/wp-content/uploads/2015/11/Colorful-Art.jpg'}
         self.ignored = ('Eval', 'Admin', 'KothHandler', 'ErrorHandler', 'BotChecks')
 
         self.current = 0
@@ -183,20 +185,25 @@ class HelpPaginator:
 
     async def help_generator(self):
         pcount = 1
-
         about = discord.Embed(title='Mysterial - Help',
                               description='For additional help and resources:\n\n'
                                           'Discord Server: [Here](http://discord.gg/Hw7RTtr)\n'
                                           'Mysterial Web:  [Here](http://mysterialbot.com/)\n\n'
                                           'To use the help command, simply use the reactions below.',
                               colour=0x8599ff)
-        self.pages.append(about)
 
         coms = sorted((cog, self.bot.get_cog_commands(cog)) for cog in self.bot.cogs if self.bot.get_cog_commands(cog))
+        tcount = len([x[0] for x in coms if x[0] not in self.ignored]) + 1
+
+        about.set_footer(text=f'Page {pcount}/{tcount}')
+        about.set_thumbnail(url=self.bot.user.avatar_url)
+        self.pages.append(about)
+
         for x in coms:
             if x[0] in self.ignored:
                 continue
 
+            pcount += 1
             cog = self.bot.get_cog(x[0])
             embed = discord.Embed(title=x[0], description=f'```ini\n{inspect.cleandoc(cog.__doc__)}\n```',
                                   colour=self.colours[x[0]])
@@ -216,6 +223,7 @@ class HelpPaginator:
                     embed.add_field(name=f'{c.name} - [Group]', value=f'{short}\n\n`{grouped}`')
                 else:
                     embed.add_field(name=c.name, value=short, inline=False)
+            embed.set_footer(text=f'Page {pcount}/{tcount}')
             self.pages.append(embed)
 
         message = await self.ctx.send(embed=self.pages[0])

@@ -126,6 +126,8 @@ class Player:
         self.resumes = set()
         self.shuffles = set()
 
+        self.threadex = None
+
     @property
     def volume(self):
         return self._volume
@@ -143,10 +145,10 @@ class Player:
     async def downloader(self):
         await self.ctx.bot.wait_until_ready()
 
-        with ThreadPoolExecutor(max_workers=4) as threadex:
+        with ThreadPoolExecutor(max_workers=4) as self.threadex:
             while not self.ctx.bot.is_closed():
                 tdl = await self.download_queue.get()
-                fut = threadex.submit(tdl[0].extract_info, download=True, url=tdl[2])
+                fut = self.threadex.submit(tdl[0].extract_info, download=True, url=tdl[2])
                 await asyncio.sleep(0)
                 fut.add_done_callback(functools.partial(self.dl_completed, tdl[1], tdl[0]))
 
@@ -253,10 +255,6 @@ class Player:
                         return await self.ctx.bot.music_cleanup(self.ctx, self)
 
                 self.controller = self.ctx.bot.loop.create_task(self.react_controller())
-                try:
-                    self.ctx.bot._player_tasks[self.ctx.guild.id].append(self.controller)
-                except:
-                    self.ctx.bot._player_tasks[self.ctx.guild.id] = [self.controller]
             else:
                 try:
                     await self.playing.edit(content=None, embed=embed)
@@ -341,7 +339,7 @@ class Music:
 
     def get_player(self, ctx):
 
-        player = self.bot._players.get(ctx.guild.id)
+        player = self.bot._players.get(ctx.guild.id, None)
 
         if player is None:
             player = Player(ctx)
@@ -574,6 +572,7 @@ class Music:
             await player.song_queue.get()
 
         vc.stop()
+        await asyncio.sleep(1)
 
         try:
             await self.bot.music_cleanup(ctx, player)
