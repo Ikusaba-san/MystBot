@@ -577,10 +577,7 @@ class Music:
         vc.stop()
         await asyncio.sleep(1)
 
-        try:
-            await self.bot.music_cleanup(ctx, player)
-        except Exception as e:
-            return await ctx.send(e)
+        await self.bot.music_cleanup(ctx, player)
         await ctx.send(f'Player has been terminated by {ctx.author.mention}. **Goodbye.**', delete_after=30)
 
     @stop_player.error

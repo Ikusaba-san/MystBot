@@ -124,9 +124,10 @@ class Botto(commands.AutoShardedBot):
                 await ctx.send(f'**```css\n[Error cancelling player tasks. |\n{e}]\n```**')
         try:
             del bot._players[ctx.guild.id]
+            del bot._player_tasks[ctx.guild.id]
         except Exception as e:
             print(e)
-            
+
         try:
             player._task_playerloop.cancel()
             player._task_downloader.cancel()
