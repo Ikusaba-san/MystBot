@@ -278,6 +278,8 @@ class Music:
             song['info']['requester'] = ctx.author
             await player.song_queue.put(song)
 
+        del download
+        
     @commands.command(name='play', aliases=['sing'])
     @commands.guild_only()
     async def search_song(self, ctx, *, search: str):
