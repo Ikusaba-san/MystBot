@@ -68,12 +68,13 @@ class Downloader(threading.Thread):
                 except Exception as e:
                     self._ytdl_error = e
                     if length <= 1:
-                        return self.queue.put_nowait({'error': self._ytdl_error, 'type': 'YTDL'})
+                        return self.stop()
                     else:
                         continue
             self.stop()
 
     def stop(self):
+        print('Stopping...')
         self._stop.set()
         self.join()
 
