@@ -267,6 +267,8 @@ class Music:
 
     async def downloader_spawn(self, ctx, search, player):
 
+        thing = []
+
         download = Downloader(search)
         download.start()
         download._stop.wait()
@@ -276,10 +278,10 @@ class Music:
         for song in songs:
             song['channel'] = ctx.channel
             song['info']['requester'] = ctx.author
-            await player.song_queue.put(song)
+            thing.append(song)
 
-        del download
-        
+        del thing
+
     @commands.command(name='play', aliases=['sing'])
     @commands.guild_only()
     async def search_song(self, ctx, *, search: str):
