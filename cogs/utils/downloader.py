@@ -71,7 +71,11 @@ class Downloader(threading.Thread):
                         return self.stop()
                     else:
                         continue
-            self.stop()
+            try:
+                self.stop()
+            except Exception as e:
+                print(e)
+            print('?')
 
     def stop(self):
         print('Stopping...')
