@@ -72,15 +72,14 @@ class Downloader(threading.Thread):
                     else:
                         continue
             try:
-                self.stop()
+                return self.stop()
             except Exception as e:
                 print(e)
-            print('?')
 
     def stop(self):
         print('Stopping...')
         self._stop.set()
-        self.join()
+        return
 
     def get_duration(self, url):
 
