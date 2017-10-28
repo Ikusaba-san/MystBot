@@ -23,84 +23,25 @@ from discord.ext import commands
 
 import asyncio
 import async_timeout
-import subprocess
-from concurrent.futures import ThreadPoolExecutor
-import functools
-
-import json
 import datetime
 import humanize
 import math
 import random
 import logging
-import uuid
+from .utils.downloader import Downloader
 
-import youtube_dl
 
 from cogs.utils.paginators import SimplePaginator
 
 log = logging.getLogger('myst')
 
 
-class SongsProcessor:
-
-    def outtmpl_seed(self):
-        ytid = str(uuid.uuid4()).replace('-', '')
-        return str(int(ytid, 16))
-
-    async def initiate_request(self, ctx, player, search: str):
-        opts = {
-            'format': 'bestaudio/best',
-            'outtmpl': f'{ctx.guild.id}/{self.outtmpl_seed()}%(extractor)s_%(id)s.%(ext)s',
-            'restrictfilenames': True,
-            'noplaylist': False,
-            'nocheckcertificate': True,
-            'ignoreerrors': False,
-            'logtostderr': False,
-            'quiet': True,
-            'no_warnings': True,
-            'default_search': 'auto',
-            'source_address': '0.0.0.0',
-            'playlistend': 50,
-        }
-
-        async with ctx.typing():
-            ytdl = youtube_dl.YoutubeDL(opts)
-            ytdl.params['extract_flat'] = True
-            ef_info = ytdl.extract_info(download=False, url=search)
-            ytdl.params['extract_flat'] = False
-
-            if 'entries' in ef_info:
-                length = len(ef_info['entries'])
-            else:
-                length = 1
-            msg = await ctx.send('```ini\n[Adding songs to Queue]\n```')
-
-            for v in range(1, length + 1):
-
-                if ctx.guild.voice_client is None:
-                    return
-
-                try:
-                    ytdl.params.update({'playlistend': v, 'playliststart': v})
-                    tdl = (ytdl, ctx, search, length)
-                    await player.download_queue.put(tdl)
-                except Exception as e:
-                    if length <= 1:
-                        return await ctx.send(f'**There was an error downloading your song.**\n```css\n[{e}]\n```')
-                    else:
-                        continue
-            await msg.delete()
-
-
 class Player:
 
     def __init__(self, ctx):
         self.ctx = ctx
-        self._task_downloader = ctx.bot.loop.create_task(self.downloader())
         self._task_playerloop = ctx.bot.loop.create_task(self.player_loop())
 
-        self.download_queue = asyncio.Queue()
         self.song_queue = asyncio.Queue()
 
         self._next = asyncio.Event()
@@ -134,51 +75,6 @@ class Player:
     @property
     def volume(self):
         return self._volume
-
-    def get_duration(self, url):
-
-        cmd = f'ffprobe -v error -show_format -of json {url}'
-        process = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        output, error = process.communicate()
-        data = json.loads(output)
-        duration = data['format']['duration']
-
-        return math.ceil(float(duration))
-
-    async def downloader(self):
-        await self.ctx.bot.wait_until_ready()
-
-        with ThreadPoolExecutor(max_workers=4) as self.threadex:
-            while not self.ctx.bot.is_closed():
-                tdl = await self.download_queue.get()
-                fut = self.threadex.submit(tdl[0].extract_info, download=True, url=tdl[2])
-                await asyncio.sleep(0)
-                fut.add_done_callback(functools.partial(self.dl_callback, tdl[1], tdl[0], tdl[3]))
-
-    def dl_callback(self, ctx, ytdl, length, future):
-        info = future.result()
-        self.ctx.bot.loop.create_task(self.dl_completed(ctx, ytdl, info, length))
-
-    async def dl_completed(self, ctx, ytdl, info, length):
-        print('In task...')
-
-        if 'entries' in info:
-            info = info['entries'][0]
-
-        duration = info.get('duration') or self.get_duration(info.get('url'))
-        song_info = {'title': info.get('title'),
-                     'weburl': info.get('webpage_url'),
-                     'duration': duration,
-                     'views': info.get('view_count'),
-                     'thumb': info.get('thumbnail'),
-                     'requester': ctx.author,
-                     'upload_date': info.get('upload_date', '\uFEFF')}
-        file = ytdl.prepare_filename(info)
-
-        if length == 1:
-            await ctx.send(f'```ini\n[Added {info.get("title")} to the queue.]\n```')
-
-        await self.song_queue.put({'source': file, 'info': song_info, 'channel': ctx.channel})
 
     async def player_loop(self):
         await self.ctx.bot.wait_until_ready()
@@ -392,8 +288,11 @@ class Music:
             pass
 
         self.bot._counter_songs += 1
-
-        self.bot.loop.create_task(SongsProcessor().initiate_request(ctx, player, search))
+        try:
+            download = Downloader(ctx=ctx, queue=player.song_queue, search=search)
+            download.start()
+        except Exception as e:
+            print(e)
 
     @commands.command(name='join', aliases=['summon', 'move', 'connect'])
     @commands.cooldown(2, 60, commands.BucketType.user)

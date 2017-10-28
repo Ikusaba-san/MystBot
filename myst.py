@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 from motor import motor_asyncio
+from asyncqlio.db import DatabaseInterface  # TODO DELETE!
 
 import asyncio
 import aiohttp
@@ -23,7 +24,8 @@ else:
 
 
 loop = asyncio.get_event_loop()
-dbc = motor_asyncio.AsyncIOMotorClient(minPoolSize=5)
+dbc = motor_asyncio.AsyncIOMotorClient(minPoolSize=5)  # TODO DELETE!
+# db = DatabaseInterface('postgresql+asyncpg://postgres:myst@127.0.0.1:5432/mysterial')
 
 token = ConfigParser()
 token.read('/home/myst/mystbot/mystconfig.ini')  # !!!VPS!!!
@@ -98,7 +100,6 @@ class Botto(commands.AutoShardedBot):
             await player.playing.delete()
         except Exception as e:
             print(e)
-            print('1e')
 
         try:
             vc._connected.clear()
@@ -112,22 +113,13 @@ class Botto(commands.AutoShardedBot):
                     vc.socket.close()
         except Exception as e:
             print(e)
-            print('2e')
-
-        try:
-            player.threadex.shutdown(wait=False)
-        except Exception as e:
-            print(e)
-            print('3e')
 
         try:
             del bot._players[ctx.guild.id]
         except Exception as e:
             print(e)
-            print('5e')
         try:
             player._task_playerloop.cancel()
-            player._task_downloader.cancel()
         except Exception as e:
             print(e)
             print('6e')
@@ -136,7 +128,6 @@ class Botto(commands.AutoShardedBot):
             del player
         except Exception as e:
             print(e)
-            print('7e')
         return
 
     # Called in on_ready()
@@ -159,6 +150,8 @@ class Botto(commands.AutoShardedBot):
             await self.dbc['owner']['stats'].insert_one({'_id': 'message_counter', 'count': 0})
             await self.dbc['owner']['stats'].insert_one({'_id': 'songs_counter', 'count': 0})
 
+        else:
+            print('Hai')
         com_counter = await self.dbc['owner']['stats'].find_one({'_id': 'command_counter'})
         msg_counter = await self.dbc['owner']['stats'].find_one({'_id': 'message_counter'})
         sng_counter = await self.dbc['owner']['stats'].find_one({'_id': 'songs_counter'})
@@ -235,6 +228,7 @@ class Botto(commands.AutoShardedBot):
         resp, respj = await self.poster('https://api.github.com/gists', data=json.dumps(payload), return_type='json')
         return respj['html_url']
 
+
 bot = Botto()
 bot.remove_command('help')
 
@@ -281,6 +275,7 @@ async def on_ready():
                 print(f'Failed to load extension {extension}.', file=sys.stderr)
                 traceback.print_exc()
     print(f'Successfully logged in and booted...!')
+
 
 async def shutdown():
 
