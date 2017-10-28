@@ -5,9 +5,10 @@ import random
 
 
 class Random:
+    """Commands which are based on RNG's."""
 
-    def __init__(self):
-        pass
+    def __init__(self, bot):
+        self.bot = bot
 
     @commands.command(name='choose', aliases=['select'])
     async def _choose(self, ctx, *args):
@@ -22,3 +23,7 @@ class Random:
 
         rolled = random.randint(first, second)
         await ctx.send(f'{ctx.author.mention} rolled: **`{rolled}`**')
+
+
+def setup(bot):
+    bot.add_cog(Random(bot))

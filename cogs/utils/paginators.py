@@ -168,7 +168,7 @@ class HelpPaginator:
         self.ctx = ctx
         self.colours = {'Music': 0xd02525, 'Moderation': 0xff8003, 'Colour': 0xdeadbf,
                         'Admin': 0xffffff, 'Eval': 0xffffff, 'KothHandler': 0xffffff, 'Plots': 0xffffff,
-                        'Observations': 0x551a8b, 'Dofus': 0x4DCDFF, 'Stats': 0x98FB98}
+                        'Observations': 0x551a8b, 'Dofus': 0x4DCDFF, 'Stats': 0x98FB98, 'Random': 0xc0ffee}
         self.images = {'Dofus': 'https://i.imgur.com/4D5t5Cq.png', 'Music': 'https://i.imgur.com/MuwbN0k.png',
                        'Moderation': 'https://i.imgur.com/QyCtECs.png', 'Plots': 'https://i.imgur.com/Y8Q8siB.png',
                        'Colour': 'https://www.zebrapen.com/wp-content/uploads/2015/11/Colorful-Art.jpg'}
