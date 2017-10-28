@@ -191,7 +191,8 @@ class HelpPaginator:
                                           '[Mysterial Web](http://mysterialbot.com/)\n'
                                           '[MystBin](http://mystbi.in)\n\n'
                                           'To use the help command, simply use the reactions below.\n'
-                                          'Only commands which {0} can use will appear.'.format(self.ctx.author.mention)
+                                          'Only commands which {0} can use will appear.'
+                              .format(self.ctx.author.display_name)
                               , colour=0x8599ff)
 
         coms = sorted((cog, self.bot.get_cog_commands(cog)) for cog in self.bot.cogs if self.bot.get_cog_commands(cog))
