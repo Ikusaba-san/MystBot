@@ -108,9 +108,10 @@ class Downloader(threading.Thread):
                      'thumb': info.get('thumbnail'),
                      'requester': self.ctx.author,
                      'upload_date': info.get('upload_date', '\uFEFF')}
-        file = ytdl.prepare_filename(info)
 
         try:
-            self.queue.put_nowait({'source': file, 'info': song_info, 'channel': self.ctx.channel})
+            self.queue.put_nowait({'source': ytdl.prepare_filename(info),
+                                   'info': song_info,
+                                   'channel': self.ctx.channel})
         except Exception as e:
             self._ytdl_error = e
