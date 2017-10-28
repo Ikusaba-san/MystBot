@@ -1,7 +1,8 @@
 import asyncio
-import threading
 import subprocess
 import uuid
+import functools
+from concurrent.futures import ThreadPoolExecutor as tpe
 
 import json
 import math
@@ -11,7 +12,7 @@ import youtube_dl
 
 class Downloader:
 
-    async def run(self, queue, ctx, search):
+    async def run(self, queue, ctx, bot, search):
         opts = {
             'format': 'bestaudio/best',
             'outtmpl': f'{ctx.guild.id}/{self.outtmpl_seed()}%(extractor)s_%(id)s.%(ext)s',
@@ -42,7 +43,8 @@ class Downloader:
 
             try:
                 ytdl.params.update({'playlistend': v, 'playliststart': v})
-                info = ytdl.extract_info(download=True, url=search)
+                tdl = functools.partial(ytdl.extract_info, download=True, url=search)
+                info = await bot.loop.run_in_executor(tpe(max_workers=4), tdl)
             except Exception as e:
                 self._ytdl_error = e
                 if length <= 1:

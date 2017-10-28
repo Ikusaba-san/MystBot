@@ -23,8 +23,6 @@ from discord.ext import commands
 
 import asyncio
 import async_timeout
-import functools
-from concurrent.futures import ThreadPoolExecutor as tpe
 import datetime
 import humanize
 import math
@@ -292,11 +290,7 @@ class Music:
         self.bot._counter_songs += 1
 
         dl = Downloader()
-        try:
-            tdl = functools.partial(dl.run, player.song_queue, ctx, search)
-            await self.bot.loop.run_in_executor(tpe(max_workers=4), tdl)
-        except Exception as e:
-            print(e)
+        await dl.run(ctx=ctx, bot=self.bot, search=search, queue=player.song_queue)
 
     @commands.command(name='join', aliases=['summon', 'move', 'connect'])
     @commands.cooldown(2, 60, commands.BucketType.user)
