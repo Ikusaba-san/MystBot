@@ -59,7 +59,8 @@ init_ext = ('cogs.admin',
             'cogs.apis',
             'cogs.koth',
             'cogs.statistics',
-            'cogs.meta')
+            'cogs.meta',
+            'cogs.random')
 
 
 class Botto(commands.AutoShardedBot):
