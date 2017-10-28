@@ -48,7 +48,7 @@ class Downloader:
             except Exception as e:
                 self._ytdl_error = e
                 if length <= 1:
-                    return
+                    return await ctx.send(f'**There was an error processing your song.** ```css\n[{e}]\n```')
                 else:
                     continue
 
@@ -64,6 +64,8 @@ class Downloader:
                          'requester': ctx.author,
                          'upload_date': info.get('upload_date', '\uFEFF')}
 
+            if length == 1:
+                await ctx.send(f'```ini\n[Added {song_info["title"]} to the queue.]\n```')
             try:
                 await queue.put({'source': ytdl.prepare_filename(info), 'info': song_info, 'channel': ctx.channel})
             except Exception as e:

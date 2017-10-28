@@ -166,12 +166,12 @@ class HelpPaginator:
     def __init__(self, bot, ctx):
         self.bot = bot
         self.ctx = ctx
-        self.colours = {'Music': 0xd02525, 'Moderation': 0xff8003, 'Colour': 0xdeadbf,
-                        'Admin': 0xffffff, 'Eval': 0xffffff, 'KothHandler': 0xffffff, 'Plots': 0xffffff,
-                        'Observations': 0x551a8b, 'Dofus': 0x4DCDFF, 'Stats': 0x98FB98, 'Random': 0xc0ffee}
-        self.images = {'Dofus': 'https://i.imgur.com/4D5t5Cq.png', 'Music': 'https://i.imgur.com/MuwbN0k.png',
-                       'Moderation': 'https://i.imgur.com/QyCtECs.png', 'Plots': 'https://i.imgur.com/Y8Q8siB.png',
-                       'Colour': 'https://www.zebrapen.com/wp-content/uploads/2015/11/Colorful-Art.jpg'}
+        self.colours = {'Music': 0xD4AED9, 'Moderation': 0xF2B5C4, 'Colour': 0xdeadbf,
+                        'Admin': 0xffffff, 'Eval': 0xffffff, 'KothHandler': 0xffffff, 'Plots': 0xF2B5C4,
+                        'Observations': 0x8D739E, 'Dofus': 0x4DCDFF, 'Stats': 0x98FB98, 'Random': 0xFFEEC7}
+        self.images = {'Dofus': 'https://i.imgur.com/4D5t5Cq.png', 'Music': 'https://i.imgur.com/DPb4hBw.png',
+                       'Moderation': 'https://i.imgur.com/QJiga6E.png', 'Plots': 'https://i.imgur.com/Y8Q8siB.png',
+                       'Colour': 'https://i.imgur.com/g2LpJZb.png'}
         self.ignored = ('Eval', 'Admin', 'KothHandler', 'ErrorHandler', 'BotChecks')
 
         self.current = 0
@@ -187,10 +187,12 @@ class HelpPaginator:
         pcount = 1
         about = discord.Embed(title='Mysterial - Help',
                               description='For additional help and resources:\n\n'
-                                          'Discord Server: [Here](http://discord.gg/Hw7RTtr)\n'
-                                          'Mysterial Web:  [Here](http://mysterialbot.com/)\n\n'
-                                          'To use the help command, simply use the reactions below.',
-                              colour=0x8599ff)
+                                          '[Support Server](http://discord.gg/Hw7RTtr)\n'
+                                          '[Mysterial Web](http://mysterialbot.com/)\n'
+                                          '[MystBin](http://mystbi.in)\n\n'
+                                          'To use the help command, simply use the reactions below.\n'
+                                          'Only commands which {0} can use will appear.'.format(self.ctx.author.mention)
+                              , colour=0x8599ff)
 
         coms = sorted((cog, self.bot.get_cog_commands(cog)) for cog in self.bot.cogs if self.bot.get_cog_commands(cog))
         tcount = len([x[0] for x in coms if x[0] not in self.ignored]) + 1
