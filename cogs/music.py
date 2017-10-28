@@ -265,23 +265,6 @@ class Music:
         player = self.get_player(ctx)
         await player.now_playing(player.playing_info, ctx.channel)
 
-    async def downloader_spawn(self, ctx, search, player):
-
-        thing = []
-
-        download = Downloader(search)
-        download.start()
-        download._stop.wait()
-
-        songs = download.queue
-
-        for song in songs:
-            song['channel'] = ctx.channel
-            song['info']['requester'] = ctx.author
-            thing.append(song)
-
-        del thing
-
     @commands.command(name='play', aliases=['sing'])
     @commands.guild_only()
     async def search_song(self, ctx, *, search: str):
@@ -306,7 +289,11 @@ class Music:
 
         self.bot._counter_songs += 1
 
-        self.bot.loop.create_task(self.downloader_spawn(ctx, search, player))
+        try:
+            download = Downloader(ctx=ctx, queue=player.song_queue, search=search)
+            download.start()
+        except Exception as e:
+            print(e)
 
     @commands.command(name='join', aliases=['summon', 'move', 'connect'])
     @commands.cooldown(2, 60, commands.BucketType.user)

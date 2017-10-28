@@ -5,16 +5,16 @@ import uuid
 
 import json
 import math
-import time
 
 import youtube_dl
 
 
 class Downloader(threading.Thread):
 
-    def __init__(self, search: str):
+    def __init__(self, queue: asyncio.Queue, ctx, search: str):
         super().__init__()
-        self.queue = []
+        self.queue = queue
+        self.ctx = ctx
         self.search = search
 
         self._stop = threading.Event()
@@ -34,7 +34,7 @@ class Downloader(threading.Thread):
     def _run(self):
         opts = {
             'format': 'bestaudio/best',
-            'outtmpl': f'{self.outtmpl_seed()}/%(extractor)s_%(id)s.%(ext)s',
+            'outtmpl': f'{self.ctx.guild.id}/{self.outtmpl_seed()}%(extractor)s_%(id)s.%(ext)s',
             'restrictfilenames': True,
             'noplaylist': False,
             'nocheckcertificate': True,
@@ -68,15 +68,14 @@ class Downloader(threading.Thread):
                 except Exception as e:
                     self._ytdl_error = e
                     if length <= 1:
-                        return self.queue.append({'error': self._ytdl_error, 'type': 'YTDL'})
+                        return self.queue.put_nowait({'error': self._ytdl_error, 'type': 'YTDL'})
                     else:
                         continue
             self.stop()
 
     def stop(self):
         self._stop.set()
-        time.sleep(5)
-        return self.join()
+        self.join()
 
     def get_duration(self, url):
 
@@ -103,10 +102,11 @@ class Downloader(threading.Thread):
                      'duration': duration,
                      'views': info.get('view_count'),
                      'thumb': info.get('thumbnail'),
+                     'requester': self.ctx.author,
                      'upload_date': info.get('upload_date', '\uFEFF')}
         file = ytdl.prepare_filename(info)
 
         try:
-            self.queue.append({'source': file, 'info': song_info})
+            self.queue.put_nowait({'source': file, 'info': song_info, 'channel': self.ctx.channel})
         except Exception as e:
             self._ytdl_error = e
