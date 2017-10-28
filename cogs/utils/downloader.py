@@ -5,18 +5,19 @@ import uuid
 
 import json
 import math
+import time
 
 import youtube_dl
 
 
 class Downloader(threading.Thread):
 
-    def __init__(self, queue: asyncio.Queue, ctx, search: str):
+    def __init__(self, search: str):
         super().__init__()
-        self.queue = queue
-        self.ctx = ctx
+        self.queue = []
         self.search = search
 
+        self._stop = threading.Event()
         self.daemon = True
         self._threading_error = None
         self._ytdl_error = None
@@ -33,7 +34,7 @@ class Downloader(threading.Thread):
     def _run(self):
         opts = {
             'format': 'bestaudio/best',
-            'outtmpl': f'{self.ctx.guild.id}/{self.outtmpl_seed()}%(extractor)s_%(id)s.%(ext)s',
+            'outtmpl': f'{self.outtmpl_seed()}/%(extractor)s_%(id)s.%(ext)s',
             'restrictfilenames': True,
             'noplaylist': False,
             'nocheckcertificate': True,
@@ -57,18 +58,25 @@ class Downloader(threading.Thread):
         else:
             length = 1
 
-        for v in range(1, length + 1):
+        while not self._stop.is_set():
+            for v in range(1, length + 1):
 
-            try:
-                ytdl.params.update({'playlistend': v, 'playliststart': v})
-                info = ytdl.extract_info(download=True, url=self.search)
-                self.process_info(info, ytdl)
-            except Exception as e:
-                self._ytdl_error = e
-                if length <= 1:
-                    return self.queue.put_nowait({'error': self._ytdl_error, 'type': 'YTDL'})
-                else:
-                    continue
+                try:
+                    ytdl.params.update({'playlistend': v, 'playliststart': v})
+                    info = ytdl.extract_info(download=True, url=self.search)
+                    self.process_info(info, ytdl)
+                except Exception as e:
+                    self._ytdl_error = e
+                    if length <= 1:
+                        return self.queue.append({'error': self._ytdl_error, 'type': 'YTDL'})
+                    else:
+                        continue
+            self.stop()
+
+    def stop(self):
+        self._stop.set()
+        time.sleep(5)
+        return self.join()
 
     def get_duration(self, url):
 
@@ -95,11 +103,10 @@ class Downloader(threading.Thread):
                      'duration': duration,
                      'views': info.get('view_count'),
                      'thumb': info.get('thumbnail'),
-                     'requester': self.ctx.author,
                      'upload_date': info.get('upload_date', '\uFEFF')}
         file = ytdl.prepare_filename(info)
 
         try:
-            self.queue.put_nowait({'source': file, 'info': song_info, 'channel': self.ctx.channel})
+            self.queue.append({'source': file, 'info': song_info})
         except Exception as e:
             self._ytdl_error = e
