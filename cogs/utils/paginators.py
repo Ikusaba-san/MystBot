@@ -191,7 +191,7 @@ class HelpPaginator:
                                           '[Mysterial Web](http://mysterialbot.com/)\n'
                                           '[MystBin](http://mystbi.in)\n\n'
                                           'To use the help command, simply use the reactions below.\n'
-                                          'Only commands which {0} can use will appear.'
+                                          '`Only commands which {0} can use will appear.`'
                               .format(self.ctx.author.display_name)
                               , colour=0x8599ff)
 

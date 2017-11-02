@@ -1,7 +1,6 @@
 import discord
 from discord.ext import commands
 from motor import motor_asyncio
-from asyncqlio.db import DatabaseInterface  # TODO DELETE!
 
 import asyncio
 import aiohttp
@@ -39,7 +38,7 @@ async def get_prefix(b, msg):
     if msg is None:
         return 'myst '
 
-    if msg.guild.id is None:
+    if not msg.guild:
         return defaults
 
     dbp = dbc['prefix'][str(msg.guild.id)]

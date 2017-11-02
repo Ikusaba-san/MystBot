@@ -14,12 +14,20 @@ class DBTest:
 
         async with self.db.get_session() as session:
 
-            selc = await session.cursor("""SELECT prefix FROM mysterialbot.prefixes WHERE guild_id IN (328873861481365514);""")
-            things = await selc.fetch_many(n=10000)
-            print(things[0]['prefix'])
-            if things[0]['exists'] is True:
-                print('Working')
-                print(things)
+            await session.execute("""CREATE TABLE prefixes(
+            guild_id BIGINT PRIMARY KEY,
+            entries TEXT[25]);
+            
+            CREATE TABLE blocks(
+            user_id BIGINT PRIMARY KEY,
+            user_name TEXT NOT NULL,
+            time TIMESTAMP);
+            
+            CREATE TABLE statistics(
+            name VARCHAR(50) UNIQUE NOT NULL,
+            count INT,
+            other VARCHAR(100)
+            )""")
 
 
 test = DBTest()
