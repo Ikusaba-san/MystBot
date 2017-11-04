@@ -82,7 +82,6 @@ class Stats:
         cpu_usage = self.bot.process.cpu_percent() / psutil.cpu_count()
 
         embed = discord.Embed(title='MysterialBot', description='Latest Updates:\n' + revision, colour=0x886aff)
-        embed.set_thumbnail(url=self.bot.user.avatar_url)
         embed.set_footer(icon_url=
                          'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0a/Python.svg/200px-Python.svg.png',
                          text='Made in Python with discord.py@rewrite')
