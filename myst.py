@@ -27,7 +27,7 @@ dbc = motor_asyncio.AsyncIOMotorClient(minPoolSize=5)  # TODO DELETE!
 # db = DatabaseInterface('postgresql+asyncpg://postgres:myst@127.0.0.1:5432/mysterial')
 
 token = ConfigParser()
-token.read('mystconfig.ini')  # !!!VPS!!!
+token.read('/home/myst/mystbot/mystconfig.ini')  # !!!VPS!!!
 
 
 async def get_prefix(b, msg):
@@ -293,6 +293,6 @@ async def shutdown():
 with setup_logging():
 
     try:
-        loop.run_until_complete(bot.start(token.get('TOKENALPHA', '_id'), bot=True, reconnect=True))  # !!!VPS!!!
+        loop.run_until_complete(bot.start(token.get('TOKEN', '_id'), bot=True, reconnect=True))  # !!!VPS!!!
     except KeyboardInterrupt:
         loop.run_until_complete(shutdown())
