@@ -279,6 +279,8 @@ class Music:
         if vc is None:
             await ctx.invoke(self.voice_connect)
             vc = ctx.guild.voice_client
+            if vc is None:
+                return
 
         player = self.get_player(ctx)
 
@@ -480,7 +482,6 @@ class Music:
             await player.song_queue.get()
 
         vc.stop()
-        await asyncio.sleep(1)
 
         self.bot.loop.create_task(self.bot.music_cleanup(ctx, player))
         await ctx.send(f'Player has been terminated by {ctx.author.mention}. **Goodbye.**', delete_after=30)

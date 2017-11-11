@@ -27,7 +27,7 @@ dbc = motor_asyncio.AsyncIOMotorClient(minPoolSize=5)  # TODO DELETE!
 # db = DatabaseInterface('postgresql+asyncpg://postgres:myst@127.0.0.1:5432/mysterial')
 
 token = ConfigParser()
-token.read('/home/myst/mystbot/mystconfig.ini')  # !!!VPS!!!
+token.read('mystconfig.ini')  # !!!VPS!!!
 
 
 async def get_prefix(b, msg):
@@ -59,7 +59,8 @@ init_ext = ('cogs.admin',
             'cogs.koth',
             'cogs.statistics',
             'cogs.meta',
-            'cogs.random')
+            'cogs.random',
+            'cogs.twitch')
 
 
 class Botto(commands.AutoShardedBot):
@@ -114,21 +115,7 @@ class Botto(commands.AutoShardedBot):
         except Exception as e:
             print(e)
 
-        try:
-            del bot._players[ctx.guild.id]
-        except Exception as e:
-            print(e)
-        try:
-            player._task_playerloop.cancel()
-        except Exception as e:
-            print(e)
-            print('6e')
-
-        try:
-            del player
-        except Exception as e:
-            print(e)
-        return
+        bot._players.pop(ctx.guild.id, None)
 
     # Called in on_ready()
     async def _load_cache(self):
@@ -150,8 +137,6 @@ class Botto(commands.AutoShardedBot):
             await self.dbc['owner']['stats'].insert_one({'_id': 'message_counter', 'count': 0})
             await self.dbc['owner']['stats'].insert_one({'_id': 'songs_counter', 'count': 0})
 
-        else:
-            print('Hai')
         com_counter = await self.dbc['owner']['stats'].find_one({'_id': 'command_counter'})
         msg_counter = await self.dbc['owner']['stats'].find_one({'_id': 'message_counter'})
         sng_counter = await self.dbc['owner']['stats'].find_one({'_id': 'songs_counter'})
@@ -271,7 +256,7 @@ async def on_ready():
         for extension in init_ext:
             try:
                 bot.load_extension(extension)
-            except Exception as e:
+            except Exception:
                 print(f'Failed to load extension {extension}.', file=sys.stderr)
                 traceback.print_exc()
     print(f'Successfully logged in and booted...!')
@@ -308,6 +293,6 @@ async def shutdown():
 with setup_logging():
 
     try:
-        loop.run_until_complete(bot.start(token.get('TOKEN', '_id'), bot=True, reconnect=True))  # !!!VPS!!!
+        loop.run_until_complete(bot.start(token.get('TOKENALPHA', '_id'), bot=True, reconnect=True))  # !!!VPS!!!
     except KeyboardInterrupt:
         loop.run_until_complete(shutdown())

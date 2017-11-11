@@ -65,7 +65,7 @@ class Downloader:
                          'upload_date': info.get('upload_date', '\uFEFF')}
 
             if length == 1:
-                await ctx.send(f'```ini\n[Added {song_info["title"]} to the queue.]\n```')
+                await ctx.send(f'```ini\n[Added {song_info["title"]} to the queue.]\n```', delete_after=15)
             try:
                 await queue.put({'source': ytdl.prepare_filename(info), 'info': song_info, 'channel': ctx.channel})
             except Exception as e:

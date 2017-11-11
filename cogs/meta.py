@@ -17,14 +17,12 @@ class Stats:
 
     async def stats_updater(self):
         await self.bot.wait_until_ready()
+        db = self.bot.dbc['owner']['stats']
 
         while not self.bot.is_closed():
-            await self.bot.dbc['owner']['stats'].update_one({'_id': 'command_counter'},
-                                                            {'%set': {'count': self.bot._counter_commands}})
-            await self.bot.dbc['owner']['stats'].update_one({'_id': 'message_counter'},
-                                                            {'%set': {'count': self.bot._counter_messages}})
-            await self.bot.dbc['owner']['stats'].update_one({'_id': 'songs_counter'},
-                                                            {'%set': {'count': self.bot._counter_songs}})
+            await db.update_one({'_id': 'command_counter'}, {'$set': {'count': self.bot._counter_commands}})
+            await db.update_one({'_id': 'message_counter'}, {'$set': {'count': self.bot._counter_messages}})
+            await db.update_one({'_id': 'songs_counter'}, {'$set': {'count': self.bot._counter_songs}})
 
             await asyncio.sleep(60)
 
