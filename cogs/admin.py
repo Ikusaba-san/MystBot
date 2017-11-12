@@ -166,23 +166,21 @@ class Eval:
 
             if ret is None:
                 if value:
-                    try:
-                        len(value) > 2000
-                    except TypeError:
+                    if len(value) > 2000:
                         gist = await self.bot.create_gist('Eval', [(f'eval.py', value)])
                         await ctx.send(gist)
                     else:
                         await ctx.send(f'```py\n{value}\n```')
             else:
                 ctx.bot._last_result = ret
-                try:
-                    len(value) + len(ret) > 2000
-                except TypeError:
-                    code = textwrap.dedent(f'{value}{ret}').replace('`', '\uFEFF')
+                fmt = f'{value}{ret}'
+
+                if len(fmt) > 1989:  # len('```py\n\n```') == 10, one extra char for good measure
+                    code = textwrap.dedent(fmt).replace('`', '\uFEFF')
                     gist = await self.bot.create_gist('Eval', [('eval.py', f'{code}')])
                     await ctx.send(f'**Eval was uploaded as a gist.**\n {gist}')
                 else:
-                    await ctx.send(f'```py\n{value}{ret}\n```')
+                    await ctx.send(f'```py\n{fmt}\n```')
 
 
 def setup(bot):
