@@ -173,10 +173,13 @@ class Eval:
                         await ctx.send(f'```py\n{value}\n```')
             else:
                 ctx.bot._last_result = ret
-                if len(value) + len(ret) > 2000:
-                    code = textwrap.dedent(f'{value}{ret}').replace('`', '\uFEFF')
-                    gist = await self.bot.create_gist('Eval', [('eval.py', f'{code}')])
-                    await ctx.send(f'**Eval was uploaded as a gist.**\n {gist}')
+                try:
+                    if len(value) + len(ret) > 2000:
+                        code = textwrap.dedent(f'{value}{ret}').replace('`', '\uFEFF')
+                        gist = await self.bot.create_gist('Eval', [('eval.py', f'{code}')])
+                        await ctx.send(f'**Eval was uploaded as a gist.**\n {gist}')
+                except:
+                    await ctx.send(f'```py\n{value}{ret}\n```')
                 else:
                     await ctx.send(f'```py\n{value}{ret}\n```')
 
